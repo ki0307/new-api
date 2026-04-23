@@ -91,6 +91,10 @@ const renderPlanTitle = (text, record, t) => {
         )}
         <Text type='tertiary'>{t('升级分组')}</Text>
         <Text>{plan?.upgrade_group ? plan.upgrade_group : t('不升级')}</Text>
+        <Text type='tertiary'>{t('归属分组')}</Text>
+        <Text>
+          {plan?.owner_group ? plan.owner_group : t('全部分组可用')}
+        </Text>
         <Text type='tertiary'>{t('购买上限')}</Text>
         <Text>
           {plan?.max_purchase_per_user > 0
@@ -188,6 +192,15 @@ const renderUpgradeGroup = (text, record, t) => {
   return (
     <Text type={group ? 'secondary' : 'tertiary'}>
       {group ? group : t('不升级')}
+    </Text>
+  );
+};
+
+const renderOwnerGroup = (text, record, t) => {
+  const group = record?.plan?.owner_group || '';
+  return (
+    <Text type={group ? 'secondary' : 'tertiary'}>
+      {group ? group : t('全部分组可用')}
     </Text>
   );
 };
@@ -344,6 +357,11 @@ export const getSubscriptionsColumns = ({
       title: t('升级分组'),
       width: 100,
       render: (text, record) => renderUpgradeGroup(text, record, t),
+    },
+    {
+      title: t('归属分组'),
+      width: 120,
+      render: (text, record) => renderOwnerGroup(text, record, t),
     },
     {
       title: t('操作'),

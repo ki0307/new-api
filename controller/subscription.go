@@ -151,6 +151,13 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 			return
 		}
 	}
+	req.Plan.OwnerGroup = strings.TrimSpace(req.Plan.OwnerGroup)
+	if req.Plan.OwnerGroup != "" {
+		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.OwnerGroup]; !ok {
+			common.ApiErrorMsg(c, "归属分组不存在")
+			return
+		}
+	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)
 	if req.Plan.QuotaResetPeriod == model.SubscriptionResetCustom && req.Plan.QuotaResetCustomSeconds <= 0 {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
@@ -214,6 +221,13 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			return
 		}
 	}
+	req.Plan.OwnerGroup = strings.TrimSpace(req.Plan.OwnerGroup)
+	if req.Plan.OwnerGroup != "" {
+		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.OwnerGroup]; !ok {
+			common.ApiErrorMsg(c, "归属分组不存在")
+			return
+		}
+	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)
 	if req.Plan.QuotaResetPeriod == model.SubscriptionResetCustom && req.Plan.QuotaResetCustomSeconds <= 0 {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
@@ -237,6 +251,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"max_purchase_per_user":      req.Plan.MaxPurchasePerUser,
 			"total_amount":               req.Plan.TotalAmount,
 			"upgrade_group":              req.Plan.UpgradeGroup,
+			"owner_group":                req.Plan.OwnerGroup,
 			"quota_reset_period":         req.Plan.QuotaResetPeriod,
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
 			"updated_at":                 common.GetTimestamp(),

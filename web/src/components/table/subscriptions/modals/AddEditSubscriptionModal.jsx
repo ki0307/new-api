@@ -95,6 +95,7 @@ const AddEditSubscriptionModal = ({
     max_purchase_per_user: 0,
     total_amount: 0,
     upgrade_group: '',
+    owner_group: '',
     stripe_price_id: '',
     creem_product_id: '',
   });
@@ -121,6 +122,7 @@ const AddEditSubscriptionModal = ({
         quotaToDisplayAmount(p.total_amount || 0).toFixed(2),
       ),
       upgrade_group: p.upgrade_group || '',
+      owner_group: p.owner_group || '',
       stripe_price_id: p.stripe_price_id || '',
       creem_product_id: p.creem_product_id || '',
     };
@@ -164,6 +166,7 @@ const AddEditSubscriptionModal = ({
           max_purchase_per_user: Number(values.max_purchase_per_user || 0),
           total_amount: displayAmountToQuota(values.total_amount),
           upgrade_group: values.upgrade_group || '',
+          owner_group: values.owner_group || '',
         },
       };
       if (editingPlan?.plan?.id) {
@@ -334,6 +337,28 @@ const AddEditSubscriptionModal = ({
                         )}
                       >
                         <Select.Option value=''>{t('不升级')}</Select.Option>
+                        {(groupOptions || []).map((g) => (
+                          <Select.Option key={g} value={g}>
+                            {g}
+                          </Select.Option>
+                        ))}
+                      </Form.Select>
+                    </Col>
+
+                    <Col span={12}>
+                      <Form.Select
+                        field='owner_group'
+                        label={t('归属分组')}
+                        showClear
+                        loading={groupLoading}
+                        placeholder={t('全部分组可用')}
+                        extraText={t(
+                          '为空时所有分组都可消耗该订阅额度；选择分组后，只有使用该分组的请求才能扣减本订阅额度。',
+                        )}
+                      >
+                        <Select.Option value=''>
+                          {t('全部分组可用')}
+                        </Select.Option>
                         {(groupOptions || []).map((g) => (
                           <Select.Option key={g} value={g}>
                             {g}

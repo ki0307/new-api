@@ -168,6 +168,10 @@ type SubscriptionPlan struct {
 	// Upgrade user group after purchase (empty = no change)
 	UpgradeGroup string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 
+	// Subscription owner group. Empty = any group can consume this subscription's quota.
+	// When non-empty, only requests whose using group equals OwnerGroup may consume.
+	OwnerGroup string `json:"owner_group" gorm:"type:varchar(64);default:''"`
+
 	// Total quota (amount in quota units, 0 = unlimited)
 	TotalAmount int64 `json:"total_amount" gorm:"type:bigint;not null;default:0"`
 
@@ -249,6 +253,10 @@ type UserSubscription struct {
 
 	UpgradeGroup  string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 	PrevUserGroup string `json:"prev_user_group" gorm:"type:varchar(64);default:''"`
+
+	// OwnerGroup is snapshotted from the plan at creation time.
+	// Empty = usable by any group; non-empty = only the matching using group may consume this subscription's quota.
+	OwnerGroup string `json:"owner_group" gorm:"type:varchar(64);default:'';index"`
 
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
@@ -495,6 +503,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		NextResetTime: nextReset,
 		UpgradeGroup:  upgradeGroup,
 		PrevUserGroup: prevGroup,
+		OwnerGroup:    strings.TrimSpace(plan.OwnerGroup),
 		CreatedAt:     common.GetTimestamp(),
 		UpdatedAt:     common.GetTimestamp(),
 	}
@@ -674,17 +683,24 @@ func GetAllActiveUserSubscriptions(userId int) ([]SubscriptionSummary, error) {
 	return buildSubscriptionSummaries(subs), nil
 }
 
-// HasActiveUserSubscription returns whether the user has any active subscription.
+// HasActiveUserSubscription returns whether the user has any active subscription usable by usingGroup.
+// A subscription is usable when its owner_group is empty (global) or matches usingGroup.
 // This is a lightweight existence check to avoid heavy pre-consume transactions.
-func HasActiveUserSubscription(userId int) (bool, error) {
+func HasActiveUserSubscription(userId int, usingGroup string) (bool, error) {
 	if userId <= 0 {
 		return false, errors.New("invalid userId")
 	}
 	now := common.GetTimestamp()
+	query := DB.Model(&UserSubscription{}).
+		Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now)
+	group := strings.TrimSpace(usingGroup)
+	if group == "" {
+		query = query.Where("owner_group = ?", "")
+	} else {
+		query = query.Where("owner_group = ? OR owner_group = ?", "", group)
+	}
 	var count int64
-	if err := DB.Model(&UserSubscription{}).
-		Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
-		Count(&count).Error; err != nil {
+	if err := query.Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
@@ -960,8 +976,9 @@ func maybeResetUserSubscriptionWithPlanTx(tx *gorm.DB, sub *UserSubscription, pl
 	return tx.Save(sub).Error
 }
 
-// PreConsumeUserSubscription pre-consumes from any active subscription total quota.
-func PreConsumeUserSubscription(requestId string, userId int, modelName string, quotaType int, amount int64) (*SubscriptionPreConsumeResult, error) {
+// PreConsumeUserSubscription pre-consumes from any active subscription total quota
+// that is usable by usingGroup (owner_group empty or equal to usingGroup).
+func PreConsumeUserSubscription(requestId string, userId int, modelName string, quotaType int, amount int64, usingGroup string) (*SubscriptionPreConsumeResult, error) {
 	if userId <= 0 {
 		return nil, errors.New("invalid userId")
 	}
@@ -972,6 +989,7 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		return nil, errors.New("amount must be > 0")
 	}
 	now := GetDBTimestamp()
+	group := strings.TrimSpace(usingGroup)
 
 	returnValue := &SubscriptionPreConsumeResult{}
 
@@ -998,9 +1016,15 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		}
 
 		var subs []UserSubscription
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").
-			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
-			Order("end_time asc, id asc").
+		subQuery := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now)
+		if group == "" {
+			subQuery = subQuery.Where("owner_group = ?", "")
+		} else {
+			subQuery = subQuery.Where("owner_group = ? OR owner_group = ?", "", group)
+		}
+		if err := subQuery.
+			Order("owner_group desc, end_time asc, id asc").
 			Find(&subs).Error; err != nil {
 			return errors.New("no active subscription")
 		}
