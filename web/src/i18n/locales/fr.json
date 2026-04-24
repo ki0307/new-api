@@ -1521,6 +1521,7 @@
     "当前模型存在未显式设置输入倍率的扩展倍率；填写输入价格后会自动换算为价格字段。": "Ce modèle contient des ratios étendus sans ratio d'entrée explicite. Après saisie du prix d'entrée, ils seront convertis automatiquement en champs de prix.",
     "当前没有未设置定价的模型": "Il n'y a actuellement aucun modèle sans prix",
     "当前版本": "Version actuelle",
+    "基础版本": "Version de base",
     "当前状态": "Current Status",
     "当前缓存大小": "Taille actuelle du cache",
     "当前编辑": "En cours d'édition",

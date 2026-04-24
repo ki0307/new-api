@@ -234,32 +234,21 @@ const OtherSetting = () => {
         ...loadingInput,
         CheckUpdate: true,
       }));
-      // Use a CORS proxy to avoid direct cross-origin requests to GitHub API
-      // Option 1: Use a public CORS proxy service
-      // const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-      // const res = await API.get(
-      //   `${proxyUrl}https://api.github.com/repos/Calcium-Ion/new-api/releases/latest`,
-      // );
-
-      // Option 2: Use the JSON proxy approach which often works better with GitHub API
       const res = await fetch(
-        'https://api.github.com/repos/Calcium-Ion/new-api/releases/latest',
+        'https://api.github.com/repos/QuantumNous/new-api/releases/latest',
         {
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
-            // Adding User-Agent which is often required by GitHub API
             'User-Agent': 'new-api-update-checker',
           },
         },
       ).then((response) => response.json());
 
-      // Option 3: Use a local proxy endpoint
-      // Create a cached version of the response to avoid frequent GitHub API calls
-      // const res = await API.get('/api/status/github-latest-release');
-
       const { tag_name, body } = res;
-      if (tag_name === statusState?.status?.version) {
+      const compareVersion =
+        statusState?.status?.base_version || statusState?.status?.version;
+      if (tag_name === compareVersion) {
         showSuccess(`已是最新版本：${tag_name}`);
       } else {
         setUpdateData({
@@ -334,6 +323,9 @@ const OtherSetting = () => {
                     <Text>
                       {t('当前版本')}：
                       {statusState?.status?.version || t('未知')}
+                      {statusState?.status?.base_version
+                        ? `（${t('基础版本')}：${statusState.status.base_version}）`
+                        : ''}
                     </Text>
                     <Button
                       type='primary'
