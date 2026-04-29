@@ -259,6 +259,14 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {
 			return err
 		}
+		// Propagate owner_group to active user subscriptions so group restriction takes
+		// effect immediately. Without this, snapshots stay on the pre-change value and
+		// existing subscribers keep consuming across groups after the admin edit.
+		if err := tx.Model(&model.UserSubscription{}).
+			Where("plan_id = ? AND status = ?", id, "active").
+			Update("owner_group", req.Plan.OwnerGroup).Error; err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

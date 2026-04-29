@@ -168,8 +168,8 @@ type SubscriptionPlan struct {
 	// Upgrade user group after purchase (empty = no change)
 	UpgradeGroup string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 
-	// Subscription owner group. Empty = any group can consume this subscription's quota.
-	// When non-empty, only requests whose using group equals OwnerGroup may consume.
+	// Subscription owner group. Empty = usable by any group.
+	// When non-empty, only requests whose using-group matches OwnerGroup may consume.
 	OwnerGroup string `json:"owner_group" gorm:"type:varchar(64);default:''"`
 
 	// Total quota (amount in quota units, 0 = unlimited)
@@ -689,9 +689,8 @@ func GetAllActiveUserSubscriptions(userId int) ([]SubscriptionSummary, error) {
 	return buildSubscriptionSummaries(subs), nil
 }
 
-// HasActiveUserSubscription returns whether the user has any active subscription usable by usingGroup.
-// A subscription is usable when its owner_group is empty (global) or matches usingGroup.
-// This is a lightweight existence check to avoid heavy pre-consume transactions.
+// HasActiveUserSubscription returns whether the user has any active subscription
+// usable by usingGroup (owner_group empty or equal to usingGroup).
 func HasActiveUserSubscription(userId int, usingGroup string) (bool, error) {
 	if userId <= 0 {
 		return false, errors.New("invalid userId")

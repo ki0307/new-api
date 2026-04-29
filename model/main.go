@@ -361,7 +361,36 @@ func migrateDBFast() error {
 			return err
 		}
 	}
+	if err := backfillUserSubscriptionOwnerGroup(); err != nil {
+		common.SysError(fmt.Sprintf("backfill user_subscription.owner_group failed: %v", err))
+	}
 	common.SysLog("database migrated")
+	return nil
+}
+
+// backfillUserSubscriptionOwnerGroup syncs active user_subscription.owner_group from
+// the current plan's owner_group, for rows whose snapshot is stale — mainly old rows
+// created before the owner_group column existed (column default '' leaves them
+// "globally consumable" regardless of the plan's actual ownership).
+// Idempotent: only UPDATEs where the value differs.
+func backfillUserSubscriptionOwnerGroup() error {
+	var plans []SubscriptionPlan
+	if err := DB.Select("id, owner_group").Find(&plans).Error; err != nil {
+		return err
+	}
+	var updated int64
+	for _, p := range plans {
+		res := DB.Model(&UserSubscription{}).
+			Where("plan_id = ? AND status = ? AND owner_group <> ?", p.Id, "active", p.OwnerGroup).
+			Update("owner_group", p.OwnerGroup)
+		if res.Error != nil {
+			return res.Error
+		}
+		updated += res.RowsAffected
+	}
+	if updated > 0 {
+		common.SysLog(fmt.Sprintf("backfilled owner_group on %d active user_subscriptions", updated))
+	}
 	return nil
 }
 
