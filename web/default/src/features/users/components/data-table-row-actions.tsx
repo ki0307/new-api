@@ -178,24 +178,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             </DropdownMenuItem>
           )}
 
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault()
-              setBindingDialogOpen(true)
-            }}
-          >
+          <DropdownMenuItem onClick={() => setBindingDialogOpen(true)}>
             {t('Manage Bindings')}
             <DropdownMenuShortcut>
               <Link2 size={16} />
             </DropdownMenuShortcut>
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault()
-              setSubscriptionsDialogOpen(true)
-            }}
-          >
+          <DropdownMenuItem onClick={() => setSubscriptionsDialogOpen(true)}>
             {t('Manage Subscriptions')}
             <DropdownMenuShortcut>
               <CreditCard size={16} />
@@ -205,10 +195,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault()
-              setResetPasskeyOpen(true)
-            }}
+            onClick={() => setResetPasskeyOpen(true)}
             disabled={isRoot}
           >
             {t('Reset Passkey')}
@@ -218,10 +205,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault()
-              setResetTwoFAOpen(true)
-            }}
+            onClick={() => setResetTwoFAOpen(true)}
             disabled={isRoot}
           >
             {t('Reset 2FA')}

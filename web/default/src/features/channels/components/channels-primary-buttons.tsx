@@ -182,10 +182,7 @@ export function ChannelsPrimaryButtons() {
             <DropdownMenuSeparator />
 
             <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault()
-                setShowDeleteDialog(true)
-              }}
+              onClick={() => setShowDeleteDialog(true)}
               className='text-destructive focus:text-destructive'
             >
               {t('Delete All Disabled')}
