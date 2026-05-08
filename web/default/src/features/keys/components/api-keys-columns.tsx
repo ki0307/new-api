@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
+import { GroupBadge } from '@/components/group-badge'
 import { StatusBadge } from '@/components/status-badge'
 import { getSystemOptions } from '@/features/system-settings/api'
 import { API_KEY_STATUSES } from '../constants'
@@ -29,16 +30,6 @@ function getQuotaProgressColor(percentage: number): string {
   if (percentage <= 10) return '[&_[data-slot=progress-indicator]]:bg-rose-500'
   if (percentage <= 30) return '[&_[data-slot=progress-indicator]]:bg-amber-500'
   return '[&_[data-slot=progress-indicator]]:bg-emerald-500'
-}
-
-function getGroupRatioClassName(ratio: number): string {
-  if (ratio > 1) {
-    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300'
-  }
-  if (ratio < 1) {
-    return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300'
-  }
-  return 'border-border bg-muted text-muted-foreground'
 }
 
 function useGroupRatios(): Record<string, number> {
@@ -94,10 +85,8 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
       id: 'select',
       header: ({ table }) => (
         <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
+          checked={table.getIsAllPageRowsSelected()}
+          indeterminate={table.getIsSomePageRowsSelected()}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label='Select all'
           className='translate-y-[2px]'
@@ -180,21 +169,19 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
 
         return (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <div className='w-[150px] space-y-1'>
-                <div className='flex justify-between text-xs'>
-                  <span className='font-medium tabular-nums'>
-                    {formatQuota(remaining)}
-                  </span>
-                  <span className='text-muted-foreground tabular-nums'>
-                    {formatQuota(total)}
-                  </span>
-                </div>
-                <Progress
-                  value={percentage}
-                  className={cn('h-1.5', getQuotaProgressColor(percentage))}
-                />
+            <TooltipTrigger render={<div className='w-[150px] space-y-1' />}>
+              <div className='flex justify-between text-xs'>
+                <span className='font-medium tabular-nums'>
+                  {formatQuota(remaining)}
+                </span>
+                <span className='text-muted-foreground tabular-nums'>
+                  {formatQuota(total)}
+                </span>
               </div>
+              <Progress
+                value={percentage}
+                className={cn('h-1.5', getQuotaProgressColor(percentage))}
+              />
             </TooltipTrigger>
             <TooltipContent>
               <div className='space-y-1 text-xs'>
@@ -228,18 +215,20 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
         if (group === 'auto') {
           return (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <span className='inline-flex items-center gap-1.5 text-xs'>
-                  <span className='text-muted-foreground'>{t('Auto')}</span>
-                  {apiKey.cross_group_retry && (
-                    <>
-                      <span className='text-muted-foreground/30'>·</span>
-                      <span className='text-muted-foreground/60'>
-                        {t('Cross-group')}
-                      </span>
-                    </>
-                  )}
-                </span>
+              <TooltipTrigger
+                render={
+                  <span className='inline-flex items-center gap-1.5 text-xs' />
+                }
+              >
+                <GroupBadge group='auto' />
+                {apiKey.cross_group_retry && (
+                  <>
+                    <span className='text-muted-foreground/30'>·</span>
+                    <span className='text-muted-foreground/60'>
+                      {t('Cross-group')}
+                    </span>
+                  </>
+                )}
               </TooltipTrigger>
               <TooltipContent>
                 <span className='text-xs'>
@@ -251,22 +240,7 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
             </Tooltip>
           )
         }
-        return (
-          <span className='inline-flex items-center gap-2 text-xs'>
-            <span className='font-medium'>{group || t('Default')}</span>
-            {ratio != null && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] leading-none tabular-nums',
-                  getGroupRatioClassName(ratio)
-                )}
-              >
-                <span className='size-1 rounded-full bg-current opacity-60' />
-                <span>{ratio}x</span>
-              </span>
-            )}
-          </span>
-        )
+        return <GroupBadge group={group} ratio={ratio} />
       },
       meta: { label: t('Group'), mobileHidden: true },
     },
@@ -354,6 +328,7 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
       id: 'actions',
       cell: ({ row }) => <DataTableRowActions row={row} />,
       meta: { label: t('Actions') },
+      size: 88,
     },
   ]
 }

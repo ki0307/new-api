@@ -18,12 +18,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { GroupBadge } from '@/components/group-badge'
 import { StatusBadge } from '@/components/status-badge'
 import {
   editTagChannels,
@@ -274,8 +276,15 @@ export function EditTagDialog({ open, onOpenChange }: EditTagDialogProps) {
                   </div>
 
                   <div className='flex gap-2'>
-                    <Select
+                    <Select<string>
+                      items={[
+                        ...availableModels.map((model) => ({
+                          value: model,
+                          label: model,
+                        })),
+                      ]}
                       onValueChange={(value) => {
+                        if (value === null) return
                         if (!selectedModels.includes(value)) {
                           setSelectedModels([...selectedModels, value])
                         }
@@ -286,14 +295,16 @@ export function EditTagDialog({ open, onOpenChange }: EditTagDialogProps) {
                           placeholder={t('Add from available models...')}
                         />
                       </SelectTrigger>
-                      <SelectContent>
-                        <ScrollArea className='h-60'>
-                          {availableModels.map((model) => (
-                            <SelectItem key={model} value={model}>
-                              {model}
-                            </SelectItem>
-                          ))}
-                        </ScrollArea>
+                      <SelectContent alignItemWithTrigger={false}>
+                        <SelectGroup>
+                          <ScrollArea className='h-60'>
+                            {availableModels.map((model) => (
+                              <SelectItem key={model} value={model}>
+                                {model}
+                              </SelectItem>
+                            ))}
+                          </ScrollArea>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>
@@ -388,17 +399,14 @@ export function EditTagDialog({ open, onOpenChange }: EditTagDialogProps) {
               </Label>
               <div className='flex min-h-[60px] flex-wrap gap-2 rounded-md border p-3'>
                 {availableGroups.map((group) => (
-                  <StatusBadge
+                  <GroupBadge
                     key={group}
-                    variant={
-                      selectedGroups.includes(group) ? 'info' : 'neutral'
-                    }
-                    className='cursor-pointer transition-opacity hover:opacity-70'
-                    copyable={false}
+                    group={group}
+                    className={`cursor-pointer rounded-sm transition-opacity hover:opacity-70 ${
+                      selectedGroups.includes(group) ? 'bg-muted/70 px-1' : ''
+                    }`}
                     onClick={() => handleToggleGroup(group)}
-                  >
-                    {group}
-                  </StatusBadge>
+                  />
                 ))}
               </div>
             </div>

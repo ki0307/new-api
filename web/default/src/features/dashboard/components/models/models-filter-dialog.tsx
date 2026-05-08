@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Filter, RotateCcw, Calendar, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
-import { getNormalizedDateRange, type TimeGranularity } from '@/lib/time'
+import { getRollingDateRange, type TimeGranularity } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,26 +20,27 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { DateTimePicker } from '@/components/datetime-picker'
 import {
-  DEFAULT_TIME_GRANULARITY,
   TIME_GRANULARITY_OPTIONS,
   TIME_RANGE_PRESETS,
-  EMPTY_DASHBOARD_FILTERS,
 } from '@/features/dashboard/constants'
 import {
+  buildDefaultDashboardFilters,
   cleanFilters,
-  getSavedGranularity,
-  saveGranularity,
-  getDefaultDays,
 } from '@/features/dashboard/lib'
-import { type DashboardFilters } from '@/features/dashboard/types'
+import type {
+  DashboardChartPreferences,
+  DashboardFilters,
+} from '@/features/dashboard/types'
 
 interface ModelsFilterProps {
+  preferences: DashboardChartPreferences
   onFilterChange: (filters: DashboardFilters) => void
   onReset: () => void
 }
@@ -58,30 +59,27 @@ const SectionDivider = ({ label }: { label: string }) => (
   </div>
 )
 
-export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
+export function ModelsFilter(props: ModelsFilterProps) {
   const { t } = useTranslation()
   // 使用已缓存的用户数据，避免重复调用 API
   const user = useAuthStore((state) => state.auth.user)
   const isAdmin = user?.role && user.role >= 10
 
   const [open, setOpen] = useState(false)
-  const [filters, setFilters] = useState<DashboardFilters>(() => {
-    const granularity = getSavedGranularity()
-    const days = getDefaultDays(granularity)
-    const { start, end } = getNormalizedDateRange(days)
-    return {
-      ...EMPTY_DASHBOARD_FILTERS,
-      start_timestamp: start,
-      end_timestamp: end,
-      time_granularity: granularity,
-    }
-  })
-  const [selectedRange, setSelectedRange] = useState<number | null>(() =>
-    getDefaultDays()
+  const [filters, setFilters] = useState<DashboardFilters>(() =>
+    buildDefaultDashboardFilters(props.preferences)
+  )
+  const [selectedRange, setSelectedRange] = useState<number | null>(
+    () => props.preferences.defaultTimeRangeDays
   )
 
+  useEffect(() => {
+    setFilters(buildDefaultDashboardFilters(props.preferences))
+    setSelectedRange(props.preferences.defaultTimeRangeDays)
+  }, [props.preferences])
+
   const handleApply = () => {
-    onFilterChange(
+    props.onFilterChange(
       cleanFilters(
         filters as unknown as Record<string, unknown>
       ) as typeof filters
@@ -90,17 +88,15 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
   }
 
   const handleReset = () => {
-    const days = getDefaultDays(DEFAULT_TIME_GRANULARITY)
-    const { start, end } = getNormalizedDateRange(days)
+    const days = props.preferences.defaultTimeRangeDays
+    const { start, end } = getRollingDateRange(days)
     setFilters({
-      ...EMPTY_DASHBOARD_FILTERS,
+      ...buildDefaultDashboardFilters(props.preferences),
       start_timestamp: start,
       end_timestamp: end,
-      time_granularity: DEFAULT_TIME_GRANULARITY,
     })
     setSelectedRange(days)
-    saveGranularity(DEFAULT_TIME_GRANULARITY)
-    onReset()
+    props.onReset()
     setOpen(false)
   }
 
@@ -111,12 +107,10 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
     setFilters((prev) => ({ ...prev, [field]: value }))
     if (field === 'start_timestamp' || field === 'end_timestamp')
       setSelectedRange(null)
-    if (field === 'time_granularity' && typeof value === 'string')
-      saveGranularity(value as TimeGranularity)
   }
 
   const handleQuickRange = (days: number) => {
-    const { start, end } = getNormalizedDateRange(days)
+    const { start, end } = getRollingDateRange(days)
 
     setFilters((prev) => ({
       ...prev,
@@ -128,13 +122,11 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant='outline' size='sm'>
-          <Filter className='mr-2 h-4 w-4' />
-          {t('Filter')}
-        </Button>
+      <DialogTrigger render={<Button variant='outline' size='sm' />}>
+        <Filter className='mr-2 h-4 w-4' />
+        {t('Filter')}
       </DialogTrigger>
-      <DialogContent className='flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-lg'>
+      <DialogContent className='flex max-h-[calc(100dvh-2rem)] flex-col max-sm:h-dvh max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4 sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>{t('Filter Dashboard Models')}</DialogTitle>
           <DialogDescription>
@@ -144,15 +136,15 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className='flex-1 pr-4'>
-          <div className='grid gap-4 py-4'>
+        <ScrollArea className='flex-1 pr-3 sm:pr-4'>
+          <div className='grid gap-3 py-3 sm:gap-4 sm:py-4'>
             {/* Quick time range selection */}
             <div className='grid gap-2'>
               <Label className='flex items-center gap-2'>
                 <Calendar className='h-4 w-4' />
                 {t('Quick Range')}
               </Label>
-              <div className='flex gap-2'>
+              <div className='grid grid-cols-2 gap-2 sm:flex'>
                 {TIME_RANGE_PRESETS.map((range) => (
                   <Button
                     key={range.days}
@@ -177,7 +169,7 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
             <SectionDivider label={t('Custom Time Range')} />
 
             {/* Custom time range */}
-            <div className='grid gap-4'>
+            <div className='grid gap-3 sm:gap-4'>
               <div className='grid gap-2'>
                 <Label htmlFor='start_timestamp'>{t('Start Time')}</Label>
                 <DateTimePicker
@@ -206,6 +198,12 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
             <div className='grid gap-2'>
               <Label htmlFor='time_granularity'>{t('Time Granularity')}</Label>
               <Select
+                items={[
+                  ...TIME_GRANULARITY_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: t(option.label),
+                  })),
+                ]}
                 value={filters.time_granularity}
                 onValueChange={(value) =>
                   handleChange('time_granularity', value as TimeGranularity)
@@ -214,12 +212,14 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
                 <SelectTrigger>
                   <SelectValue placeholder={t('Select time granularity')} />
                 </SelectTrigger>
-                <SelectContent>
-                  {TIME_GRANULARITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {t(option.label)}
-                    </SelectItem>
-                  ))}
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    {TIME_GRANULARITY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {t(option.label)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -243,7 +243,7 @@ export function ModelsFilter({ onFilterChange, onReset }: ModelsFilterProps) {
           </div>
         </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className='grid grid-cols-2 gap-2 sm:flex'>
           <Button onClick={handleReset} variant='outline' type='button'>
             <RotateCcw className='mr-2 h-4 w-4' />
             {t('Reset')}
