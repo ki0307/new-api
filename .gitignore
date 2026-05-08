@@ -10,6 +10,8 @@ build
 logs
 web/default/dist
 web/classic/dist
+web/default/VERSION
+web/classic/VERSION
 web/node_modules
 web/dist
 .env
