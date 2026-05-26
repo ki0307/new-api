@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import {
   Copy,
   Check,
@@ -501,6 +519,13 @@ export function DetailsDialog(props: DetailsDialogProps) {
                   mono
                 />
               )}
+              {props.log.upstream_request_id && (
+                <DetailRow
+                  label={t('Upstream Request ID')}
+                  value={props.log.upstream_request_id}
+                  mono
+                />
+              )}
 
               {props.isAdmin && props.log.channel > 0 && (
                 <DetailRow
@@ -960,37 +985,34 @@ export function DetailsDialog(props: DetailsDialogProps) {
               </DetailSection>
             )}
 
-            {/* Param override (admin only) */}
-            {props.isAdmin &&
-              other?.po &&
-              Array.isArray(other.po) &&
-              other.po.length > 0 && (
-                <DetailSection
-                  icon={<Settings2 className='size-3.5' aria-hidden='true' />}
-                  label={`${t('Param Override')} (${other.po.length})`}
-                >
-                  {other.po.filter(Boolean).map((line, idx) => {
-                    const parsed = parseAuditLine(line)
-                    if (!parsed) return null
-                    return (
-                      <div
-                        key={idx}
-                        className='bg-background/60 flex min-w-0 flex-col gap-1.5 rounded border p-2 sm:flex-row sm:items-start sm:gap-2'
-                      >
-                        <StatusBadge
-                          variant='neutral'
-                          label={getParamOverrideActionLabel(parsed.action, t)}
-                          className='shrink-0 font-medium'
-                          copyable={false}
-                        />
-                        <span className='min-w-0 font-mono text-[11px] leading-relaxed break-all sm:break-words'>
-                          {parsed.content}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </DetailSection>
-              )}
+            {/* Param override */}
+            {other?.po && Array.isArray(other.po) && other.po.length > 0 && (
+              <DetailSection
+                icon={<Settings2 className='size-3.5' aria-hidden='true' />}
+                label={`${t('Param Override')} (${other.po.length})`}
+              >
+                {other.po.filter(Boolean).map((line, idx) => {
+                  const parsed = parseAuditLine(line)
+                  if (!parsed) return null
+                  return (
+                    <div
+                      key={idx}
+                      className='bg-background/60 flex min-w-0 flex-col gap-1.5 rounded border p-2 sm:flex-row sm:items-start sm:gap-2'
+                    >
+                      <StatusBadge
+                        variant='neutral'
+                        label={getParamOverrideActionLabel(parsed.action, t)}
+                        className='shrink-0 font-medium'
+                        copyable={false}
+                      />
+                      <span className='min-w-0 font-mono text-[11px] leading-relaxed break-all sm:break-words'>
+                        {parsed.content}
+                      </span>
+                    </div>
+                  )
+                })}
+              </DetailSection>
+            )}
 
             {/* Content */}
             {details && (

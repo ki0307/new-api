@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useMemo } from 'react'
 import { VChart } from '@visactor/react-vchart'
 import { PieChart } from 'lucide-react'
@@ -84,6 +102,14 @@ type MarketShareSectionProps = {
 export function MarketShareSection(props: MarketShareSectionProps) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
+  const chartTextColor =
+    resolvedTheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.68)'
+      : 'rgba(15, 23, 42, 0.58)'
+  const chartGridColor =
+    resolvedTheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(15, 23, 42, 0.12)'
 
   const colourMap = useMemo(
     () => buildVendorColourMap(props.history.vendors.map((v) => v.name)),
@@ -112,13 +138,12 @@ export function MarketShareSection(props: MarketShareSectionProps) {
       stack: true,
       paddingInner: 0.12,
       legends: { visible: false },
-      bar: { style: { cornerRadius: 1 } },
       color: { specified: colourMap },
       axes: [
         {
           orient: 'bottom',
           label: {
-            style: { fill: 'currentColor', fontSize: 10 },
+            style: { fill: chartTextColor, fontSize: 10 },
             autoHide: true,
             autoLimit: true,
           },
@@ -131,9 +156,12 @@ export function MarketShareSection(props: MarketShareSectionProps) {
           label: {
             formatMethod: (val: number | string) =>
               `${Math.round(Number(val) * 100)}%`,
-            style: { fill: 'currentColor', fontSize: 10 },
+            style: { fill: chartTextColor, fontSize: 10 },
           },
-          grid: { visible: true, style: { lineDash: [3, 3] } },
+          grid: {
+            visible: true,
+            style: { lineDash: [3, 3], stroke: chartGridColor },
+          },
         },
       ],
       tooltip: {
@@ -175,7 +203,7 @@ export function MarketShareSection(props: MarketShareSectionProps) {
       },
       animationAppear: { duration: 500 },
     }
-  }, [colourMap, orderedPoints])
+  }, [chartGridColor, chartTextColor, colourMap, orderedPoints])
 
   const visible = props.rows.slice(0, MAX_VENDORS_IN_LIST)
   const half = Math.ceil(visible.length / 2)

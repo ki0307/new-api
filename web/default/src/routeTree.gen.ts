@@ -19,6 +19,8 @@ import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
+import { Route as ConsoleTopupRouteImport } from './routes/console/topup'
+import { Route as ConsoleLogRouteImport } from './routes/console/log'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
@@ -28,6 +30,7 @@ import { Route as errors401RouteImport } from './routes/(errors)/401'
 import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
 import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
 import { Route as authResetRouteImport } from './routes/(auth)/reset'
+import { Route as authRegisterRouteImport } from './routes/(auth)/register'
 import { Route as authOtpRouteImport } from './routes/(auth)/otp'
 import { Route as authOauthRouteImport } from './routes/(auth)/oauth'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
@@ -114,6 +117,16 @@ const OauthProviderRoute = OauthProviderRouteImport.update({
   path: '/oauth/$provider',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsoleTopupRoute = ConsoleTopupRouteImport.update({
+  id: '/console/topup',
+  path: '/console/topup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsoleLogRoute = ConsoleLogRouteImport.update({
+  id: '/console/log',
+  path: '/console/log',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedChat2linkRoute = AuthenticatedChat2linkRouteImport.update({
   id: '/chat2link',
   path: '/chat2link',
@@ -157,6 +170,11 @@ const authSignInRoute = authSignInRouteImport.update({
 const authResetRoute = authResetRouteImport.update({
   id: '/reset',
   path: '/reset',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const authRegisterRoute = authRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => authRouteRoute,
 } as any)
 const authOtpRoute = authOtpRouteImport.update({
@@ -382,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof authForgotPasswordRoute
   '/oauth': typeof authOauthRoute
   '/otp': typeof authOtpRoute
+  '/register': typeof authRegisterRoute
   '/reset': typeof authResetRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
@@ -391,6 +410,8 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/console/log': typeof ConsoleLogRoute
+  '/console/topup': typeof ConsoleTopupRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
@@ -437,6 +458,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof authForgotPasswordRoute
   '/oauth': typeof authOauthRoute
   '/otp': typeof authOtpRoute
+  '/register': typeof authRegisterRoute
   '/reset': typeof authResetRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
@@ -446,6 +468,8 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/console/log': typeof ConsoleLogRoute
+  '/console/topup': typeof ConsoleTopupRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
   '/pricing': typeof PricingIndexRoute
@@ -496,6 +520,7 @@ export interface FileRoutesById {
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/oauth': typeof authOauthRoute
   '/(auth)/otp': typeof authOtpRoute
+  '/(auth)/register': typeof authRegisterRoute
   '/(auth)/reset': typeof authResetRoute
   '/(auth)/sign-in': typeof authSignInRoute
   '/(auth)/sign-up': typeof authSignUpRoute
@@ -505,6 +530,8 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
+  '/console/log': typeof ConsoleLogRoute
+  '/console/topup': typeof ConsoleTopupRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
@@ -554,6 +581,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/oauth'
     | '/otp'
+    | '/register'
     | '/reset'
     | '/sign-in'
     | '/sign-up'
@@ -563,6 +591,8 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/chat2link'
+    | '/console/log'
+    | '/console/topup'
     | '/oauth/$provider'
     | '/about/'
     | '/pricing/'
@@ -609,6 +639,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/oauth'
     | '/otp'
+    | '/register'
     | '/reset'
     | '/sign-in'
     | '/sign-up'
@@ -618,6 +649,8 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/chat2link'
+    | '/console/log'
+    | '/console/topup'
     | '/oauth/$provider'
     | '/about'
     | '/pricing'
@@ -667,6 +700,7 @@ export interface FileRouteTypes {
     | '/(auth)/forgot-password'
     | '/(auth)/oauth'
     | '/(auth)/otp'
+    | '/(auth)/register'
     | '/(auth)/reset'
     | '/(auth)/sign-in'
     | '/(auth)/sign-up'
@@ -676,6 +710,8 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/chat2link'
+    | '/console/log'
+    | '/console/topup'
     | '/oauth/$provider'
     | '/about/'
     | '/pricing/'
@@ -727,6 +763,8 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
+  ConsoleLogRoute: typeof ConsoleLogRoute
+  ConsoleTopupRoute: typeof ConsoleTopupRoute
   OauthProviderRoute: typeof OauthProviderRoute
   AboutIndexRoute: typeof AboutIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
@@ -807,6 +845,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OauthProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/console/topup': {
+      id: '/console/topup'
+      path: '/console/topup'
+      fullPath: '/console/topup'
+      preLoaderRoute: typeof ConsoleTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/console/log': {
+      id: '/console/log'
+      path: '/console/log'
+      fullPath: '/console/log'
+      preLoaderRoute: typeof ConsoleLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/chat2link': {
       id: '/_authenticated/chat2link'
       path: '/chat2link'
@@ -868,6 +920,13 @@ declare module '@tanstack/react-router' {
       path: '/reset'
       fullPath: '/reset'
       preLoaderRoute: typeof authResetRouteImport
+      parentRoute: typeof authRouteRoute
+    }
+    '/(auth)/register': {
+      id: '/(auth)/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof authRegisterRouteImport
       parentRoute: typeof authRouteRoute
     }
     '/(auth)/otp': {
@@ -1136,6 +1195,7 @@ interface authRouteRouteChildren {
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authOauthRoute: typeof authOauthRoute
   authOtpRoute: typeof authOtpRoute
+  authRegisterRoute: typeof authRegisterRoute
   authResetRoute: typeof authResetRoute
   authSignInRoute: typeof authSignInRoute
   authSignUpRoute: typeof authSignUpRoute
@@ -1146,6 +1206,7 @@ const authRouteRouteChildren: authRouteRouteChildren = {
   authForgotPasswordRoute: authForgotPasswordRoute,
   authOauthRoute: authOauthRoute,
   authOtpRoute: authOtpRoute,
+  authRegisterRoute: authRegisterRoute,
   authResetRoute: authResetRoute,
   authSignInRoute: authSignInRoute,
   authSignUpRoute: authSignUpRoute,
@@ -1271,6 +1332,8 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
+  ConsoleLogRoute: ConsoleLogRoute,
+  ConsoleTopupRoute: ConsoleTopupRoute,
   OauthProviderRoute: OauthProviderRoute,
   AboutIndexRoute: AboutIndexRoute,
   PricingIndexRoute: PricingIndexRoute,

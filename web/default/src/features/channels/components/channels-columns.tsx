@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,7 +35,7 @@ import {
   formatQuota as formatQuotaValue,
 } from '@/lib/format'
 import { getLobeIcon } from '@/lib/lobe-icon'
-import { cn, truncateText } from '@/lib/utils'
+import { truncateText } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -29,11 +47,9 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableColumnHeader } from '@/components/data-table/column-header'
 import { GroupBadge } from '@/components/group-badge'
-import {
-  StatusBadge,
-  dotColorMap,
-  textColorMap,
-} from '@/components/status-badge'
+import { StatusBadge, StatusBadgeList } from '@/components/status-badge'
+import { TableId } from '@/components/table-id'
+import { TruncatedText } from '@/components/truncated-text'
 import { getCodexUsage } from '../api'
 import { CHANNEL_STATUS_CONFIG, MODEL_FETCHABLE_TYPES } from '../constants'
 import {
@@ -88,25 +104,12 @@ function renderLimitedItems(
   items: React.ReactNode[],
   maxDisplay: number = 2
 ): React.ReactNode {
-  if (items.length === 0)
-    return <span className='text-muted-foreground text-xs'>-</span>
-
-  const displayed = items.slice(0, maxDisplay)
-  const remaining = items.length - maxDisplay
-
   return (
-    <div className='flex max-w-full items-center gap-1 overflow-hidden'>
-      {displayed}
-      {remaining > 0 && (
-        <StatusBadge
-          label={`+${remaining}`}
-          variant='neutral'
-          size='sm'
-          copyable={false}
-          className='flex-shrink-0'
-        />
-      )}
-    </div>
+    <StatusBadgeList
+      items={items}
+      max={maxDisplay}
+      renderItem={(item) => item}
+    />
   )
 }
 
@@ -342,47 +345,50 @@ function BalanceCell({ channel }: { channel: Channel }) {
 
   return (
     <TooltipProvider>
-      <div className='flex items-center gap-1.5 text-xs font-medium'>
-        <span
-          className={cn(
-            'size-1.5 shrink-0 rounded-full',
-            dotColorMap[isUpdating ? 'neutral' : variant]
-          )}
-          aria-hidden='true'
-        />
+      <div className='flex items-center gap-1'>
         <Tooltip>
           <TooltipTrigger
-            render={<span className='text-muted-foreground cursor-help' />}
-          >
-            {usedDisplay}
-          </TooltipTrigger>
+            render={
+              <StatusBadge
+                label={usedDisplay}
+                variant='neutral'
+                size='sm'
+                copyable={false}
+                className='cursor-help'
+              />
+            }
+          />
           <TooltipContent>
             <p>
               {t('Used:')} {usedDisplay}
             </p>
           </TooltipContent>
         </Tooltip>
-        <span className='text-muted-foreground/30'>·</span>
         <Tooltip>
           <TooltipTrigger
             render={
-              <span
-                className={cn(
-                  'cursor-pointer transition-opacity hover:opacity-70',
+              <StatusBadge
+                label={
+                  isUpdating
+                    ? t('Updating...')
+                    : channel.type === 57
+                      ? t('Account Info')
+                      : remainingDisplay
+                }
+                variant={
                   channel.type === 57
-                    ? 'text-primary'
-                    : textColorMap[isUpdating ? 'neutral' : variant]
-                )}
+                    ? 'info'
+                    : isUpdating
+                      ? 'neutral'
+                      : variant
+                }
+                size='sm'
+                copyable={false}
+                className='cursor-pointer'
                 onClick={handleClickUpdate}
               />
             }
-          >
-            {isUpdating
-              ? 'Updating...'
-              : channel.type === 57
-                ? t('Account Info')
-                : remainingDisplay}
-          </TooltipTrigger>
+          />
           <TooltipContent>
             <p>
               {channel.type === 57
@@ -472,15 +478,7 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
       ),
       cell: ({ row }) => {
         const id = row.getValue('id') as number
-        return (
-          <StatusBadge
-            label={String(id)}
-            variant='neutral'
-            copyText={String(id)}
-            size='sm'
-            className='font-mono'
-          />
-        )
+        return <TableId value={id} />
       },
       size: 80,
     },
@@ -538,7 +536,11 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
           <div className='flex items-center gap-2'>
             <div className='flex flex-col gap-1'>
               <div className='flex items-center gap-1.5'>
-                <span className='font-medium'>{truncateText(name, 30)}</span>
+                <TruncatedText
+                  text={name}
+                  className='font-medium'
+                  maxWidth='max-w-[180px]'
+                />
                 {isPassThrough && (
                   <TooltipProvider delay={100}>
                     <Tooltip>
@@ -611,7 +613,7 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
         const typeNameKey = getChannelTypeLabel(type)
         const typeName = t(typeNameKey)
         const iconName = getChannelTypeIcon(type)
-        const icon = getLobeIcon(`${iconName}.Color`, 20)
+        const icon = getLobeIcon(`${iconName}.Color`, 14)
         const channel = row.original as Channel
         const isMultiKey = isMultiKeyChannel(channel)
         const multiKeyMode = channel.channel_info?.multi_key_mode ?? 'random'
@@ -631,31 +633,32 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
 
         return (
           <div className='flex items-center gap-2'>
-            <div className='flex items-center gap-1.5'>
-              {isMultiKey && (
-                <TooltipProvider delay={100}>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <span className='border-border bg-muted text-primary inline-flex h-6 w-6 items-center justify-center rounded-full border' />
-                      }
-                    >
-                      <MultiKeyModeIcon className='h-3.5 w-3.5' />
-                    </TooltipTrigger>
-                    <TooltipContent side='top'>
-                      {multiKeyTooltip}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {icon}
-            </div>
+            {isMultiKey && (
+              <TooltipProvider delay={100}>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className='border-border bg-muted text-primary inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0' />
+                    }
+                  >
+                    <MultiKeyModeIcon className='h-3 w-3' />
+                  </TooltipTrigger>
+                  <TooltipContent side='top'>
+                    {multiKeyTooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <StatusBadge
-              label={typeName}
               autoColor={typeName}
               size='sm'
               copyable={false}
-            />
+              showDot={false}
+              className='pl-1 gap-1'
+            >
+              {icon}
+              <span className='truncate'>{typeName}</span>
+            </StatusBadge>
             {isIonet && (
               <TooltipProvider delay={100}>
                 <Tooltip>
@@ -666,14 +669,19 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
                         onClick={(e) => {
                           e.stopPropagation()
                           if (!deploymentId) return
-                          const targetUrl = `/console/deployment?deployment_id=${deploymentId}`
+                          const targetUrl = `/models/deployments?dFilter=${encodeURIComponent(String(deploymentId))}`
                           window.open(targetUrl, '_blank', 'noopener')
                         }}
                       />
                     }
                   >
-                    <span className='text-muted-foreground/30'>·</span>
-                    <span className={cn(textColorMap.purple)}>IO.NET</span>
+                    <StatusBadge
+                      label='IO.NET'
+                      variant='purple'
+                      size='sm'
+                      copyable={false}
+                      className='cursor-pointer'
+                    />
                   </TooltipTrigger>
                   <TooltipContent side='top'>
                     <div className='max-w-xs space-y-1'>
@@ -724,7 +732,6 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
               <StatusBadge
                 label={`Active (${childrenCount})`}
                 variant='success'
-                showDot
                 size='sm'
                 copyable={false}
               />
@@ -783,7 +790,6 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
                     <StatusBadge
                       label={label}
                       variant={config.variant}
-                      showDot={config.showDot}
                       size='sm'
                       copyable={false}
                     />
@@ -812,7 +818,6 @@ export function useChannelsColumns(): ColumnDef<Channel>[] {
           <StatusBadge
             label={label}
             variant={config.variant}
-            showDot={config.showDot}
             size='sm'
             copyable={false}
           />

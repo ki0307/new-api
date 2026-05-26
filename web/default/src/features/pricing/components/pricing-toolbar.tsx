@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useCallback, useState } from 'react'
 import { ArrowUpDown, Check, Filter, Grid2X2, Table2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +40,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  sideDrawerContentClassName,
+  sideDrawerFormClassName,
+  sideDrawerHeaderClassName,
+} from '@/components/drawer-layout'
 import {
   VIEW_MODES,
   getSortLabels,
@@ -154,7 +177,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
             <Filter className='size-4' />
             {t('Filter')}
             {props.activeFilterCount > 0 && (
-              <Badge className='ml-0.5 size-5 justify-center rounded-full p-0 text-[10px]'>
+              <Badge className='ml-0.5 size-5 justify-center p-0 text-[10px]'>
                 {props.activeFilterCount}
               </Badge>
             )}
@@ -251,15 +274,15 @@ export function PricingToolbar(props: PricingToolbarProps) {
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
         <SheetContent
           side='right'
-          className='flex h-dvh w-full flex-col overflow-hidden p-0 sm:max-w-md'
+          className={sideDrawerContentClassName('sm:max-w-md')}
         >
-          <SheetHeader className='border-b px-4 py-3 sm:px-6 sm:py-4'>
+          <SheetHeader className={sideDrawerHeaderClassName()}>
             <SheetTitle>{t('Filter')}</SheetTitle>
             <SheetDescription>
               {t('Filter models by provider, group, type, endpoint, and tags.')}
             </SheetDescription>
           </SheetHeader>
-          <div className='flex-1 overflow-y-auto p-3 sm:p-4'>
+          <div className={sideDrawerFormClassName('gap-0')}>
             <PricingSidebar
               quotaTypeFilter={props.quotaTypeFilter}
               endpointTypeFilter={props.endpointTypeFilter}

@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useMemo } from 'react'
 import {
   ArrowDownRight,
@@ -41,7 +59,7 @@ function RankBadge(props: { rank: number }) {
   return (
     <span
       className={cn(
-        'inline-flex size-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums',
+        'inline-flex size-7 shrink-0 items-center justify-center rounded-md font-mono text-xs font-bold tabular-nums',
         palette
       )}
     >
@@ -181,13 +199,13 @@ export function ModelDetailsApps(props: { model: PricingModel }) {
                       <div className='text-sm font-medium'>
                         <AppLink app={app} />
                       </div>
-                      <p className='text-muted-foreground line-clamp-1 text-xs'>
+                      <p className='text-muted-foreground line-clamp-1 text-sm'>
                         {app.description}
                       </p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className='text-muted-foreground hidden py-2.5 text-xs md:table-cell'>
+                <TableCell className='text-muted-foreground hidden py-2.5 md:table-cell'>
                   {app.category}
                 </TableCell>
                 <TableCell className='py-2.5 text-right font-mono tabular-nums'>

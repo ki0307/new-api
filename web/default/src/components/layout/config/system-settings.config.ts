@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { type TFunction } from 'i18next'
 import {
   Box,
@@ -15,15 +33,16 @@ import { getModelsSectionNavItems } from '@/features/system-settings/models/sect
 import { getOperationsSectionNavItems } from '@/features/system-settings/operations/section-registry.tsx'
 import { getSecuritySectionNavItems } from '@/features/system-settings/security/section-registry.tsx'
 import { getSiteSectionNavItems } from '@/features/system-settings/site/section-registry.tsx'
-import { type NavGroup } from '../types'
+import type { NavGroup, SidebarView } from '../types'
 
 /**
- * System settings sidebar configuration
- * Displayed when switching to "System Settings" workspace
+ * Sidebar nav groups for the System Settings nested view.
+ *
+ * Kept as a single group because the workspace title in the sidebar
+ * header already provides top-level context — the inner group label
+ * scopes the items as "administration" actions.
  */
-export const WORKSPACE_SYSTEM_SETTINGS_ID = 'system-settings'
-
-export function getSystemSettingsNavGroups(t: TFunction): NavGroup[] {
+function getSystemSettingsNavGroups(t: TFunction): NavGroup[] {
   return [
     {
       id: 'system-administration',
@@ -67,4 +86,21 @@ export function getSystemSettingsNavGroups(t: TFunction): NavGroup[] {
       ],
     },
   ]
+}
+
+/**
+ * Nested sidebar view for `/system-settings/*`.
+ *
+ * Activates the Vercel / Cloudflare-style drill-in sidebar:
+ * the root navigation is replaced by the system administration
+ * groups, with a "Back to Dashboard" affordance in the header.
+ */
+export const SYSTEM_SETTINGS_VIEW: SidebarView = {
+  id: 'system-settings',
+  pathPattern: /^\/system-settings(\/|$)/,
+  parent: {
+    to: '/dashboard/overview',
+    label: 'Back to Dashboard',
+  },
+  getNavGroups: getSystemSettingsNavGroups,
 }

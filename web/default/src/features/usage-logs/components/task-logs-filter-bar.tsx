@@ -1,15 +1,36 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useState, useEffect, useCallback } from 'react'
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
 import { useNavigate, getRouteApi } from '@tanstack/react-router'
 import { type Table } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { useIsAdmin } from '@/hooks/use-admin'
-import { Input } from '@/components/ui/input'
-import { DataTableToolbar } from '@/components/data-table'
 import { buildSearchParams } from '../lib/filter'
 import { getDefaultTimeRange } from '../lib/utils'
 import type { DrawingLogFilters, LogCategory, TaskLogFilters } from '../types'
 import { CompactDateTimeRangePicker } from './compact-date-time-range-picker'
+import {
+  LogsFilterField,
+  LogsFilterInput,
+  LogsFilterToolbar,
+} from './logs-filter-toolbar'
 
 const route = getRouteApi('/_authenticated/usage-logs/$section')
 
@@ -142,45 +163,60 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     props.logCategory === 'drawing'
       ? t('Filter by Midjourney task ID')
       : t('Filter by task ID')
-  const inputClass = 'w-full sm:w-[180px] lg:w-[200px]'
   const hasAdditionalFilters = !!filterValue || !!filters.channel
+  const dateRangeFilter = (
+    <LogsFilterField wide>
+      <CompactDateTimeRangePicker
+        start={filters.startTime}
+        end={filters.endTime}
+        onChange={({ start, end }) => {
+          handleChange('startTime', start)
+          handleChange('endTime', end)
+        }}
+      />
+    </LogsFilterField>
+  )
+  const taskIdFilter = (
+    <LogsFilterField>
+      <LogsFilterInput
+        aria-label={t('Task ID')}
+        placeholder={placeholder}
+        value={filterValue}
+        onChange={(e) => handleFilterChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+    </LogsFilterField>
+  )
+  const channelFilter = isAdmin ? (
+    <LogsFilterField>
+      <LogsFilterInput
+        placeholder={t('Channel ID')}
+        value={filters.channel || ''}
+        onChange={(e) => handleChange('channel', e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+    </LogsFilterField>
+  ) : null
 
   return (
-    <DataTableToolbar
+    <LogsFilterToolbar
       table={props.table}
-      customSearch={
-        <CompactDateTimeRangePicker
-          start={filters.startTime}
-          end={filters.endTime}
-          onChange={({ start, end }) => {
-            handleChange('startTime', start)
-            handleChange('endTime', end)
-          }}
-          className='w-full sm:w-[340px]'
-        />
-      }
-      additionalSearch={
+      primaryFilters={
         <>
-          <Input
-            aria-label={t('Task ID')}
-            placeholder={placeholder}
-            value={filterValue}
-            onChange={(e) => handleFilterChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className={inputClass}
-          />
-          {isAdmin && (
-            <Input
-              placeholder={t('Channel ID')}
-              value={filters.channel || ''}
-              onChange={(e) => handleChange('channel', e.target.value)}
-              onKeyDown={handleKeyDown}
-              className={inputClass}
-            />
-          )}
+          {dateRangeFilter}
+          {taskIdFilter}
+          {channelFilter}
         </>
       }
-      hasAdditionalFilters={hasAdditionalFilters}
+      mobilePinnedFilters={dateRangeFilter}
+      mobileFilters={
+        <>
+          {taskIdFilter}
+          {channelFilter}
+        </>
+      }
+      mobileFilterCount={[filterValue, filters.channel].filter(Boolean).length}
+      hasActiveFilters={hasAdditionalFilters}
       onSearch={handleApply}
       searchLoading={fetchingLogs > 0}
       onReset={handleReset}

@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -80,36 +98,6 @@ export function createTimestampColumn<T>(config: {
 }
 
 /**
- * Duration pill colors matching common logs timing column
- */
-const durationPillBg: Record<string, string> = {
-  green:
-    'border border-emerald-200/60 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/25',
-  red: 'border border-rose-200/70 bg-rose-50/70 dark:border-rose-800/50 dark:bg-rose-950/25',
-  success:
-    'border border-emerald-200/60 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20',
-  info: 'border border-sky-200/60 bg-sky-50/50 dark:border-sky-800/50 dark:bg-sky-950/20',
-  warning:
-    'border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/50 dark:bg-amber-950/20',
-}
-
-const durationTextColor: Record<string, string> = {
-  green: 'text-emerald-700 dark:text-emerald-400',
-  red: 'text-rose-700 dark:text-rose-400',
-  success: 'text-emerald-700 dark:text-emerald-400',
-  info: 'text-sky-700 dark:text-sky-400',
-  warning: 'text-amber-700 dark:text-amber-400',
-}
-
-const durationDotColor: Record<string, string> = {
-  green: 'bg-emerald-500',
-  red: 'bg-rose-500',
-  success: 'bg-emerald-500',
-  info: 'bg-sky-500',
-  warning: 'bg-amber-500',
-}
-
-/**
  * Create a duration column - pill style matching common logs timing
  */
 export function createDurationColumn<T>(config: {
@@ -145,25 +133,25 @@ export function createDurationColumn<T>(config: {
       }
 
       const variant =
-        duration.durationSec > warningThresholdSec ? 'red' : 'green'
+        duration.durationSec > warningThresholdSec ? 'danger' : 'success'
+
+      const durationBgMap: Record<string, string> = {
+        success:
+          'border border-emerald-200/40 bg-emerald-50/35 dark:border-emerald-900/40 dark:bg-emerald-950/15',
+        warning:
+          'border border-amber-200/45 bg-amber-50/35 dark:border-amber-900/40 dark:bg-amber-950/15',
+        danger:
+          'border border-rose-200/50 bg-rose-50/35 dark:border-rose-900/40 dark:bg-rose-950/15',
+      }
 
       return (
-        <span
-          className={cn(
-            'inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-xs font-medium',
-            durationPillBg[variant],
-            durationTextColor[variant]
-          )}
-        >
-          <span
-            className={cn(
-              'size-1.5 shrink-0 rounded-full',
-              durationDotColor[variant]
-            )}
-            aria-hidden='true'
-          />
-          {duration.durationSec.toFixed(1)}s
-        </span>
+        <StatusBadge
+          label={`${duration.durationSec.toFixed(1)}s`}
+          variant={variant}
+          size='sm'
+          copyable={false}
+          className={cn('font-mono', durationBgMap[variant])}
+        />
       )
     },
     meta: { label: headerLabel },

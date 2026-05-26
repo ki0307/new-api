@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -47,6 +65,7 @@ import {
 } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { StatusBadge } from '@/components/status-badge'
+import { TableId } from '@/components/table-id'
 import { deletePrefillGroup, getPrefillGroups } from '../../api'
 import { prefillGroupsQueryKeys } from '../../lib'
 import type { PrefillGroup } from '../../types'
@@ -188,7 +207,7 @@ export function PrefillGroupManagementDialog({
                   <Button
                     variant='ghost'
                     size='icon'
-                    className='text-muted-foreground hover:text-foreground absolute top-4 right-4 rounded-full border border-transparent sm:top-5 sm:right-6'
+                    className='text-muted-foreground hover:text-foreground absolute top-4 right-4 border border-transparent sm:top-5 sm:right-6'
                   />
                 }
               >
@@ -387,13 +406,7 @@ export function PrefillGroupManagementDialog({
                                         <span className='font-medium'>
                                           {group.name}
                                         </span>
-                                        <StatusBadge
-                                          label={`#${group.id}`}
-                                          variant='neutral'
-                                          size='sm'
-                                          copyable={false}
-                                          className='font-mono'
-                                        />
+                                        <TableId value={group.id} />
                                       </div>
                                       {group.description ? (
                                         <p className='text-muted-foreground text-xs'>

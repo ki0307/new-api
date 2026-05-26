@@ -1,14 +1,31 @@
-import type { SecuritySettings } from '../types'
-import { createSectionRegistry } from '../utils/section-registry'
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { RateLimitSection } from '../request-limits/rate-limit-section'
 import { SensitiveWordsSection } from '../request-limits/sensitive-words-section'
 import { SSRFSection } from '../request-limits/ssrf-section'
+import type { SecuritySettings } from '../types'
+import { createSectionRegistry } from '../utils/section-registry'
 
 const SECURITY_SECTIONS = [
   {
     id: 'rate-limit',
     titleKey: 'Rate Limiting',
-    descriptionKey: 'Configure model request rate limiting',
     build: (settings: SecuritySettings) => (
       <RateLimitSection
         defaultValues={{
@@ -26,7 +43,6 @@ const SECURITY_SECTIONS = [
   {
     id: 'sensitive-words',
     titleKey: 'Sensitive Words',
-    descriptionKey: 'Configure sensitive word filtering',
     build: (settings: SecuritySettings) => (
       <SensitiveWordsSection
         defaultValues={{
@@ -40,7 +56,6 @@ const SECURITY_SECTIONS = [
   {
     id: 'ssrf',
     titleKey: 'SSRF Protection',
-    descriptionKey: 'Configure SSRF (Server-Side Request Forgery) protection',
     build: (settings: SecuritySettings) => (
       <SSRFSection
         defaultValues={{
@@ -80,3 +95,4 @@ export const SECURITY_SECTION_IDS = securityRegistry.sectionIds
 export const SECURITY_DEFAULT_SECTION = securityRegistry.defaultSection
 export const getSecuritySectionNavItems = securityRegistry.getSectionNavItems
 export const getSecuritySectionContent = securityRegistry.getSectionContent
+export const getSecuritySectionMeta = securityRegistry.getSectionMeta

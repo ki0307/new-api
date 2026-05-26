@@ -1,14 +1,32 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { memo, useCallback, useState } from 'react'
 import { type UseFormReturn } from 'react-hook-form'
 import { Code2, Eye, HelpCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -18,8 +36,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Sheet,
   SheetContent,
@@ -27,6 +43,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  sideDrawerContentClassName,
+  sideDrawerFormClassName,
+  sideDrawerHeaderClassName,
+} from '@/components/drawer-layout'
+import {
+  SettingsForm,
+  SettingsSwitchContent,
+  SettingsSwitchItem,
+} from '../components/settings-form-layout'
+import { SettingsPageActionsPortal } from '../components/settings-page-context'
 import { GroupRatioVisualEditor } from './group-ratio-visual-editor'
 import { GroupSpecialUsableRulesEditor } from './group-special-usable-editor'
 
@@ -72,11 +101,7 @@ export const GroupRatioForm = memo(function GroupRatioForm({
   return (
     <div className='space-y-6'>
       <div className='flex flex-wrap justify-end gap-2'>
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={() => setGuideOpen(true)}
-        >
+        <Button variant='outline' size='sm' onClick={() => setGuideOpen(true)}>
           <HelpCircle className='mr-2 h-4 w-4' />
           {t('Usage guide')}
         </Button>
@@ -98,6 +123,16 @@ export const GroupRatioForm = memo(function GroupRatioForm({
       <GroupPricingGuide open={guideOpen} onOpenChange={setGuideOpen} />
 
       <Form {...form}>
+        <SettingsPageActionsPortal>
+          <Button
+            type='button'
+            size='sm'
+            onClick={form.handleSubmit(onSave)}
+            disabled={isSaving}
+          >
+            {isSaving ? t('Saving...') : t('Save group ratios')}
+          </Button>
+        </SettingsPageActionsPortal>
         {editMode === 'visual' ? (
           <div className='space-y-6'>
             <GroupRatioVisualEditor
@@ -122,33 +157,27 @@ export const GroupRatioForm = memo(function GroupRatioForm({
               control={form.control}
               name='DefaultUseAutoGroup'
               render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Default to auto groups')}
-                    </FormLabel>
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('Default to auto groups')}</FormLabel>
                     <FormDescription>
                       {t(
                         'When enabled, newly created tokens start in the first auto group.'
                       )}
                     </FormDescription>
-                  </div>
+                  </SettingsSwitchContent>
                   <FormControl>
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                </FormItem>
+                </SettingsSwitchItem>
               )}
             />
-
-            <Button onClick={form.handleSubmit(onSave)} disabled={isSaving}>
-              {isSaving ? t('Saving...') : t('Save group ratios')}
-            </Button>
           </div>
         ) : (
-          <form onSubmit={form.handleSubmit(onSave)} className='space-y-6'>
+          <SettingsForm onSubmit={form.handleSubmit(onSave)}>
             <FormField
               control={form.control}
               name='GroupRatio'
@@ -270,31 +299,25 @@ export const GroupRatioForm = memo(function GroupRatioForm({
               control={form.control}
               name='DefaultUseAutoGroup'
               render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Default to auto groups')}
-                    </FormLabel>
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('Default to auto groups')}</FormLabel>
                     <FormDescription>
                       {t(
                         'When enabled, newly created tokens start in the first auto group.'
                       )}
                     </FormDescription>
-                  </div>
+                  </SettingsSwitchContent>
                   <FormControl>
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                </FormItem>
+                </SettingsSwitchItem>
               )}
             />
-
-            <Button type='submit' disabled={isSaving}>
-              {isSaving ? t('Saving...') : t('Save group ratios')}
-            </Button>
-          </form>
+          </SettingsForm>
         )}
       </Form>
     </div>
@@ -319,8 +342,11 @@ function GroupPricingGuide({ open, onOpenChange }: GroupPricingGuideProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side='right' className='w-full gap-0 p-0 sm:max-w-2xl'>
-        <SheetHeader className='border-b p-4'>
+      <SheetContent
+        side='right'
+        className={sideDrawerContentClassName('sm:max-w-2xl')}
+      >
+        <SheetHeader className={sideDrawerHeaderClassName()}>
           <SheetTitle>{t('Group pricing usage guide')}</SheetTitle>
           <SheetDescription>
             {t(
@@ -329,7 +355,7 @@ function GroupPricingGuide({ open, onOpenChange }: GroupPricingGuideProps) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className='space-y-5 overflow-y-auto p-4'>
+        <div className={sideDrawerFormClassName('gap-5')}>
           <section className='space-y-2'>
             <h3 className='text-sm font-semibold'>{t('Core concepts')}</h3>
             <div className='text-muted-foreground space-y-2 text-sm leading-6'>
@@ -435,7 +461,9 @@ vip          0.5     ${t('No')}                ${t('Assigned by administrator on
             </AccordionItem>
 
             <AccordionItem value='usable'>
-              <AccordionTrigger>{t('Special usable group rules')}</AccordionTrigger>
+              <AccordionTrigger>
+                {t('Special usable group rules')}
+              </AccordionTrigger>
               <AccordionContent className='space-y-3'>
                 <p className='text-muted-foreground text-sm leading-6'>
                   {t(

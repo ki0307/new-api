@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as z from 'zod'
 import { useForm } from 'react-hook-form'
@@ -186,7 +204,6 @@ type RatioSettingsCardProps = {
   groupDefaults: GroupFormValues
   toolPricesDefault: string
   titleKey?: string
-  descriptionKey?: string
   visibleTabs?: RatioTabId[]
 }
 
@@ -195,7 +212,6 @@ export function RatioSettingsCard({
   groupDefaults,
   toolPricesDefault,
   titleKey = 'Pricing Ratios',
-  descriptionKey = 'Configure model, caching, and group ratios used for billing',
   visibleTabs = ['models', 'groups', 'tool-prices', 'upstream-sync'],
 }: RatioSettingsCardProps) {
   const { t } = useTranslation()
@@ -370,12 +386,17 @@ export function RatioSettingsCard({
         (key) => normalized[key] !== modelNormalizedDefaults.current[key]
       )
 
+      if (updates.length === 0) {
+        toast.info(t('No model price changes to save'))
+        return
+      }
+
       for (const key of updates) {
         const apiKey = apiKeyMap[key as string] || (key as string)
         await updateOption.mutateAsync({ key: apiKey, value: normalized[key] })
       }
     },
-    [updateOption]
+    [t, updateOption]
   )
 
   const saveGroupRatios = useCallback(
@@ -479,7 +500,7 @@ export function RatioSettingsCard({
   }
 
   return (
-    <SettingsSection title={t(titleKey)} description={t(descriptionKey)}>
+    <SettingsSection title={t(titleKey)}>
       {visibleTabs.length === 1 ? (
         renderTabContent(defaultTab)
       ) : (

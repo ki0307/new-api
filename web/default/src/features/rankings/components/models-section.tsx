@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useMemo } from 'react'
 import { VChart } from '@visactor/react-vchart'
 import { BarChart3, Trophy } from 'lucide-react'
@@ -32,6 +50,14 @@ type ModelsSectionProps = {
 export function ModelsSection(props: ModelsSectionProps) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
+  const chartTextColor =
+    resolvedTheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.68)'
+      : 'rgba(15, 23, 42, 0.58)'
+  const chartGridColor =
+    resolvedTheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(15, 23, 42, 0.12)'
 
   // Order points so the largest model appears at the bottom of every stack.
   const orderedPoints = useMemo(() => {
@@ -59,13 +85,12 @@ export function ModelsSection(props: ModelsSectionProps) {
       yField: 'tokens',
       seriesField: 'model',
       stack: true,
-      bar: { style: { cornerRadius: 1 } },
       legends: { visible: false },
       axes: [
         {
           orient: 'bottom',
           label: {
-            style: { fill: 'currentColor', fontSize: 10 },
+            style: { fill: chartTextColor, fontSize: 10 },
             autoHide: true,
             autoLimit: true,
           },
@@ -75,9 +100,12 @@ export function ModelsSection(props: ModelsSectionProps) {
           orient: 'left',
           label: {
             formatMethod: (val: number | string) => formatTokens(Number(val)),
-            style: { fill: 'currentColor', fontSize: 10 },
+            style: { fill: chartTextColor, fontSize: 10 },
           },
-          grid: { visible: true, style: { lineDash: [3, 3] } },
+          grid: {
+            visible: true,
+            style: { lineDash: [3, 3], stroke: chartGridColor },
+          },
         },
       ],
       tooltip: {
@@ -132,7 +160,7 @@ export function ModelsSection(props: ModelsSectionProps) {
       },
       animationAppear: { duration: 500 },
     }
-  }, [orderedPoints, t])
+  }, [chartGridColor, chartTextColor, orderedPoints, t])
 
   return (
     <section className='bg-card overflow-hidden rounded-lg border'>

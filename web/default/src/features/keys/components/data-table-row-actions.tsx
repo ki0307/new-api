@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { useCallback, useState } from 'react'
 import { type Row } from '@tanstack/react-table'
 import {
@@ -76,12 +94,32 @@ export function DataTableRowActions<TData>({
     triggerRefresh,
     setResolvedKey,
     resolveRealKey,
+    resolvedKeys,
+    loadingKeys,
   } = useApiKeys()
   const isEnabled = apiKey.status === API_KEY_STATUS.ENABLED
   const { chatPresets, serverAddress } = useChatPresets()
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+  const resolvedRealKey = resolvedKeys[apiKey.id]
+  const isRealKeyLoading = Boolean(loadingKeys[apiKey.id])
 
   const hasChatPresets = chatPresets.length > 0
+
+  const handleMenuOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && !resolvedRealKey && !isRealKeyLoading) {
+        void resolveRealKey(apiKey.id)
+      }
+    },
+    [apiKey.id, isRealKeyLoading, resolvedRealKey, resolveRealKey]
+  )
+
+  const getCachedRealKey = useCallback(() => {
+    if (resolvedRealKey) return resolvedRealKey
+    void resolveRealKey(apiKey.id)
+    toast.info(t('API key is loading, please try again in a moment'))
+    return null
+  }, [apiKey.id, resolvedRealKey, resolveRealKey, t])
 
   const handleOpenChatPreset = useCallback(
     async (preset: ChatPreset) => {
@@ -183,7 +221,7 @@ export function DataTableRowActions<TData>({
         </TooltipContent>
       </Tooltip>
 
-      <DropdownMenu modal={false}>
+      <DropdownMenu modal={false} onOpenChange={handleMenuOpenChange}>
         <DropdownMenuTrigger
           render={
             <Button
@@ -198,7 +236,7 @@ export function DataTableRowActions<TData>({
         <DropdownMenuContent align='end' className='w-[200px]'>
           <DropdownMenuItem
             onClick={async () => {
-              const realKey = await resolveRealKey(apiKey.id)
+              const realKey = getCachedRealKey()
               if (!realKey) return
               const ok = await copyToClipboard(realKey)
               if (ok) toast.success(t('Copied'))
@@ -211,7 +249,7 @@ export function DataTableRowActions<TData>({
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={async () => {
-              const realKey = await resolveRealKey(apiKey.id)
+              const realKey = getCachedRealKey()
               if (!realKey) return
               const connStr = encodeConnectionString(
                 realKey,

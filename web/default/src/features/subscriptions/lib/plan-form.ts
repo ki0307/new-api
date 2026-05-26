@@ -1,5 +1,24 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 import type { SubscriptionPlan, PlanPayload } from '../types'
 
 export function getPlanFormSchema(t: TFunction) {
@@ -26,6 +45,7 @@ export function getPlanFormSchema(t: TFunction) {
     owner_group: z.string().optional(),
     stripe_price_id: z.string().optional(),
     creem_product_id: z.string().optional(),
+    waffo_pancake_product_id: z.string().optional(),
   })
 }
 
@@ -48,6 +68,7 @@ export const PLAN_FORM_DEFAULTS: PlanFormValues = {
   owner_group: '',
   stripe_price_id: '',
   creem_product_id: '',
+  waffo_pancake_product_id: '',
 }
 
 export function planToFormValues(plan: SubscriptionPlan): PlanFormValues {
@@ -63,11 +84,12 @@ export function planToFormValues(plan: SubscriptionPlan): PlanFormValues {
     enabled: plan.enabled !== false,
     sort_order: Number(plan.sort_order || 0),
     max_purchase_per_user: Number(plan.max_purchase_per_user || 0),
-    total_amount: Number(plan.total_amount || 0),
+    total_amount: quotaUnitsToDollars(Number(plan.total_amount || 0)),
     upgrade_group: plan.upgrade_group || '',
     owner_group: plan.owner_group || '',
     stripe_price_id: plan.stripe_price_id || '',
     creem_product_id: plan.creem_product_id || '',
+    waffo_pancake_product_id: plan.waffo_pancake_product_id || '',
   }
 }
 
@@ -86,7 +108,7 @@ export function formValuesToPlanPayload(values: PlanFormValues): PlanPayload {
           : 0,
       sort_order: Number(values.sort_order || 0),
       max_purchase_per_user: Number(values.max_purchase_per_user || 0),
-      total_amount: Number(values.total_amount || 0),
+      total_amount: parseQuotaFromDollars(Number(values.total_amount || 0)),
       upgrade_group: values.upgrade_group || '',
       owner_group: values.owner_group || '',
     },
