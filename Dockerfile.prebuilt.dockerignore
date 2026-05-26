@@ -1,0 +1,15 @@
+.github
+.git
+*.md
+.vscode
+.gitignore
+Makefile
+docs
+.eslintcache
+.gocache
+.gomodcache
+.agents
+/web/node_modules
+/web/default/node_modules
+/web/classic/node_modules
+!THIRD-PARTY-LICENSES.md

@@ -31,6 +31,7 @@ func GetPaymentSetting() *PaymentSetting {
 }
 
 func IsPaymentComplianceConfirmed() bool {
-	return paymentSetting.ComplianceConfirmed &&
-		paymentSetting.ComplianceTermsVersion == CurrentComplianceTermsVersion
+	// fork: compliance acknowledgement gate disabled — payment/subscription/
+	// redemption/invitation features are always treated as confirmed.
+	return true
 }

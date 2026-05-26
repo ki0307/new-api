@@ -38,3 +38,6 @@ data/
 token_estimator_test.go
 skills-lock.json
 docker-compose.yml
+
+# locally cross-compiled deploy binary (shipped to server, not source-controlled)
+/new-api-linux-amd64
