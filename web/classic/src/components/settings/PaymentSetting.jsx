@@ -101,10 +101,8 @@ const PaymentSetting = () => {
       text: t('运营和收费行为产生的法律责任'),
     },
   ];
-  const complianceConfirmed =
-    inputs['payment_setting.compliance_confirmed'] &&
-    inputs['payment_setting.compliance_terms_version'] ===
-      CURRENT_COMPLIANCE_TERMS_VERSION;
+  // fork: compliance acknowledgement gate disabled
+  const complianceConfirmed = true;
 
   const getOptions = async () => {
     const res = await API.get('/api/option/');

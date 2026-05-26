@@ -48,14 +48,11 @@ export function SubscriptionsProvider({
   const [currentRow, setCurrentRow] = useState<PlanRecord | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { data } = useSystemOptions()
-  const complianceOptions = getOptionValue(data?.data, {
-    'payment_setting.compliance_confirmed': false,
-    'payment_setting.compliance_terms_version': '',
-  })
-  const complianceConfirmed =
-    complianceOptions['payment_setting.compliance_confirmed'] &&
-    complianceOptions['payment_setting.compliance_terms_version'] ===
-      CURRENT_COMPLIANCE_TERMS_VERSION
+  // fork: compliance acknowledgement gate disabled — subscription actions
+  // are always available without requiring an admin acknowledgement.
+  void data
+  const complianceConfirmed = true
+  void CURRENT_COMPLIANCE_TERMS_VERSION
 
   const triggerRefresh = () => setRefreshTrigger((prev) => prev + 1)
 
