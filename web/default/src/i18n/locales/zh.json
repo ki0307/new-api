@@ -4520,6 +4520,7 @@
     "Owner Group": "归属分组",
     "Available to all groups": "全部分组可用",
     "When set, only requests using this group can consume the plan quota.": "若设置，仅该分组的请求可消耗本计划的额度。",
+    "Leave empty to make the plan available to all groups. When set, only requests whose using-group matches one of the selected groups can consume the plan quota.": "留空表示全部分组都可使用本套餐；设置后，只有使用所选分组之一的请求才能扣减本套餐的额度。",
     "Base version": "基础版本"
   }
 }
