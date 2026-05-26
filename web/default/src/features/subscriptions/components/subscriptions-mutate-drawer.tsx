@@ -51,6 +51,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
+import { MultiSelect } from '@/components/multi-select'
 import {
   SideDrawerSection,
   sideDrawerContentClassName,
@@ -430,30 +431,19 @@ export function SubscriptionsMutateDrawer({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('Owner Group')}</FormLabel>
-                      <Select
-                        onValueChange={(v) =>
-                          field.onChange(v === '__none__' ? '' : v)
-                        }
-                        value={field.value || ''}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('Available to all groups')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='__none__'>
-                            {t('Available to all groups')}
-                          </SelectItem>
-                          {groupOptions.map((g) => (
-                            <SelectItem key={g} value={g}>
-                              {g}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <MultiSelect
+                          options={groupOptions.map((g) => ({
+                            value: g,
+                            label: g,
+                          }))}
+                          selected={field.value ?? []}
+                          onChange={field.onChange}
+                          placeholder={t('Available to all groups')}
+                        />
+                      </FormControl>
                       <FormDescription>
-                        {t('When set, only requests using this group can consume the plan quota.')}
+                        {t('Leave empty to make the plan available to all groups. When set, only requests whose using-group matches one of the selected groups can consume the plan quota.')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

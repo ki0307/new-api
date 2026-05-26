@@ -184,11 +184,14 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 			return
 		}
 	}
-	req.Plan.OwnerGroup = strings.TrimSpace(req.Plan.OwnerGroup)
+	req.Plan.OwnerGroup = model.NormalizeOwnerGroup(req.Plan.OwnerGroup)
 	if req.Plan.OwnerGroup != "" {
-		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.OwnerGroup]; !ok {
-			common.ApiErrorMsg(c, "归属分组不存在")
-			return
+		groupRatio := ratio_setting.GetGroupRatioCopy()
+		for _, g := range model.OwnerGroupList(req.Plan.OwnerGroup) {
+			if _, ok := groupRatio[g]; !ok {
+				common.ApiErrorMsg(c, "归属分组不存在: "+g)
+				return
+			}
 		}
 	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)
@@ -258,11 +261,14 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			return
 		}
 	}
-	req.Plan.OwnerGroup = strings.TrimSpace(req.Plan.OwnerGroup)
+	req.Plan.OwnerGroup = model.NormalizeOwnerGroup(req.Plan.OwnerGroup)
 	if req.Plan.OwnerGroup != "" {
-		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.OwnerGroup]; !ok {
-			common.ApiErrorMsg(c, "归属分组不存在")
-			return
+		groupRatio := ratio_setting.GetGroupRatioCopy()
+		for _, g := range model.OwnerGroupList(req.Plan.OwnerGroup) {
+			if _, ok := groupRatio[g]; !ok {
+				common.ApiErrorMsg(c, "归属分组不存在: "+g)
+				return
+			}
 		}
 	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)

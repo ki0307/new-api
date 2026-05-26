@@ -214,14 +214,27 @@ export function useSubscriptionsColumns(): ColumnDef<PlanRecord>[] {
           <DataTableColumnHeader column={column} title={t('Owner Group')} />
         ),
         cell: ({ row }) => {
-          const group = row.original.plan.owner_group
+          const raw = row.original.plan.owner_group || ''
+          const groups = raw
+            .split(',')
+            .map((g) => g.trim())
+            .filter(Boolean)
+          if (groups.length === 0) {
+            return (
+              <span className='text-muted-foreground'>
+                {t('Available to all groups')}
+              </span>
+            )
+          }
           return (
-            <span className='text-muted-foreground'>
-              {group || t('Available to all groups')}
-            </span>
+            <div className='flex flex-wrap gap-1'>
+              {groups.map((g) => (
+                <GroupBadge key={g} group={g} />
+              ))}
+            </div>
           )
         },
-        size: 120,
+        size: 160,
       },
       {
         id: 'actions',

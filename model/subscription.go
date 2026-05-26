@@ -33,6 +33,67 @@ const (
 	SubscriptionResetCustom  = "custom"
 )
 
+// NormalizeOwnerGroup trims, dedupes and joins owner-group entries.
+// Input may be a comma-separated string from the request; output is the
+// canonical comma-separated form ("" means "available to any group").
+func NormalizeOwnerGroup(raw string) string {
+	if raw = strings.TrimSpace(raw); raw == "" {
+		return ""
+	}
+	parts := strings.Split(raw, ",")
+	seen := make(map[string]struct{}, len(parts))
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		g := strings.TrimSpace(p)
+		if g == "" {
+			continue
+		}
+		if _, ok := seen[g]; ok {
+			continue
+		}
+		seen[g] = struct{}{}
+		out = append(out, g)
+	}
+	return strings.Join(out, ",")
+}
+
+// OwnerGroupList returns the entries of a canonical owner_group CSV string.
+func OwnerGroupList(ownerGroup string) []string {
+	if ownerGroup = strings.TrimSpace(ownerGroup); ownerGroup == "" {
+		return nil
+	}
+	parts := strings.Split(ownerGroup, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if g := strings.TrimSpace(p); g != "" {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// ownerGroupMatchClause builds a cross-DB compatible WHERE clause that
+// matches rows whose owner_group is empty OR contains the given usingGroup
+// as one of its comma-separated entries. Returns ("", nil) when no clause
+// should be applied (e.g. usingGroup is empty — caller should restrict to
+// empty owner_group separately).
+func ownerGroupMatchClause(usingGroup string) (string, []interface{}) {
+	g := strings.TrimSpace(usingGroup)
+	if g == "" {
+		return "owner_group = ?", []interface{}{""}
+	}
+	// Match: empty list, exact single, or g appears as a token in the CSV.
+	// LIKE patterns work uniformly across SQLite / MySQL / PostgreSQL.
+	return "owner_group = ? OR owner_group = ? OR owner_group LIKE ? OR owner_group LIKE ? OR owner_group LIKE ?",
+		[]interface{}{
+			"",
+			g,
+			g + ",%",
+			"%," + g + ",%",
+			"%," + g,
+		}
+}
+
 var (
 	ErrSubscriptionOrderNotFound      = errors.New("subscription order not found")
 	ErrSubscriptionOrderStatusInvalid = errors.New("subscription order status invalid")
@@ -170,9 +231,10 @@ type SubscriptionPlan struct {
 	// Upgrade user group after purchase (empty = no change)
 	UpgradeGroup string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 
-	// Subscription owner group. Empty = usable by any group.
-	// When non-empty, only requests whose using-group matches OwnerGroup may consume.
-	OwnerGroup string `json:"owner_group" gorm:"type:varchar(64);default:''"`
+	// Subscription owner group(s). Empty = usable by any group.
+	// When non-empty, only requests whose using-group is contained in the
+	// comma-separated OwnerGroup list may consume.
+	OwnerGroup string `json:"owner_group" gorm:"type:varchar(255);default:''"`
 
 	// Total quota (amount in quota units, 0 = unlimited)
 	TotalAmount int64 `json:"total_amount" gorm:"type:bigint;not null;default:0"`
@@ -258,8 +320,10 @@ type UserSubscription struct {
 	PrevUserGroup string `json:"prev_user_group" gorm:"type:varchar(64);default:''"`
 
 	// OwnerGroup is snapshotted from the plan at creation time.
-	// Empty = usable by any group; non-empty = only the matching using group may consume this subscription's quota.
-	OwnerGroup string `json:"owner_group" gorm:"type:varchar(64);default:'';index"`
+	// Empty = usable by any group; non-empty = a comma-separated list of
+	// allowed using-groups (only requests whose using-group is one of those
+	// may consume this subscription's quota).
+	OwnerGroup string `json:"owner_group" gorm:"type:varchar(255);default:'';index"`
 
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
@@ -506,7 +570,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		NextResetTime: nextReset,
 		UpgradeGroup:  upgradeGroup,
 		PrevUserGroup: prevGroup,
-		OwnerGroup:    strings.TrimSpace(plan.OwnerGroup),
+		OwnerGroup:    NormalizeOwnerGroup(plan.OwnerGroup),
 		CreatedAt:     common.GetTimestamp(),
 		UpdatedAt:     common.GetTimestamp(),
 	}
@@ -800,12 +864,8 @@ func HasActiveUserSubscription(userId int, usingGroup string) (bool, error) {
 	now := common.GetTimestamp()
 	query := DB.Model(&UserSubscription{}).
 		Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now)
-	group := strings.TrimSpace(usingGroup)
-	if group == "" {
-		query = query.Where("owner_group = ?", "")
-	} else {
-		query = query.Where("owner_group = ? OR owner_group = ?", "", group)
-	}
+	clause, args := ownerGroupMatchClause(usingGroup)
+	query = query.Where(clause, args...)
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
 		return false, err
@@ -1125,11 +1185,8 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		var subs []UserSubscription
 		subQuery := tx.Set("gorm:query_option", "FOR UPDATE").
 			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now)
-		if group == "" {
-			subQuery = subQuery.Where("owner_group = ?", "")
-		} else {
-			subQuery = subQuery.Where("owner_group = ? OR owner_group = ?", "", group)
-		}
+		ogClause, ogArgs := ownerGroupMatchClause(group)
+		subQuery = subQuery.Where(ogClause, ogArgs...)
 		if err := subQuery.
 			Order("owner_group desc, end_time asc, id asc").
 			Find(&subs).Error; err != nil {
