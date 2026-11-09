@@ -27,13 +27,69 @@ func shouldUseSMTPLoginAuth() bool {
 }
 
 func getSMTPAuth() smtp.Auth {
-	if shouldUseSMTPLoginAuth() {
-		return LoginAuth(SMTPAccount, SMTPToken)
+	return AutoSMTPAuth(SMTPAccount, SMTPToken)
+}
+
+func shouldAuthenticateSMTP() bool {
+	return SMTPAccount != "" && SMTPToken != ""
+}
+
+func smtpTLSConfig() *tls.Config {
+	return &tls.Config{
+		ServerName:         SMTPServer,
+		InsecureSkipVerify: SMTPInsecureSkipVerify, // #nosec G402 -- admin-controlled SMTP compatibility option.
 	}
-	return smtp.PlainAuth("", SMTPAccount, SMTPToken, SMTPServer)
+}
+
+func newSMTPClient(addr string) (*smtp.Client, error) {
+	if SMTPSSLEnabled || (SMTPPort == 465 && !SMTPStartTLSEnabled) {
+		conn, err := tls.Dial("tcp", addr, smtpTLSConfig())
+		if err != nil {
+			return nil, err
+		}
+		client, err := smtp.NewClient(conn, SMTPServer)
+		if err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		return client, nil
+	}
+
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if SMTPStartTLSEnabled {
+		startTLSSupported, _ := client.Extension("STARTTLS")
+		if !startTLSSupported {
+			_ = client.Close()
+			return nil, fmt.Errorf("SMTP server does not support STARTTLS")
+		}
+		if err := client.StartTLS(smtpTLSConfig()); err != nil {
+			_ = client.Close()
+			return nil, err
+		}
+	}
+
+	return client, nil
 }
 
 func SendEmail(subject string, receiver string, content string) error {
+	OptionMapRWMutex.RLock()
+	provider := OptionMap["EmailProvider"]
+	resendKey := OptionMap["ResendApiKey"]
+	resendFrom := OptionMap["ResendFrom"]
+	OptionMapRWMutex.RUnlock()
+	// One selector controls delivery. Never fall back to a second provider:
+	// a failed response does not prove that the first provider did not send.
+	switch provider {
+	case "resend":
+		return sendResendEmail(resendKey, resendFrom, subject, receiver, content)
+	case "", "smtp": // Preserve existing installations without a selector.
+	default:
+		return NewMessage("Email sending method must be SMTP or Resend")
+	}
 	if SMTPFrom == "" { // for compatibility
 		SMTPFrom = SMTPAccount
 	}
@@ -42,7 +98,7 @@ func SendEmail(subject string, receiver string, content string) error {
 		return err2
 	}
 	if SMTPServer == "" && SMTPAccount == "" {
-		return fmt.Errorf("SMTP 服务器未配置")
+		return NewMessage("SMTP server is not configured")
 	}
 	encodedSubject := fmt.Sprintf("=?UTF-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(subject)))
 	mail := []byte(fmt.Sprintf("To: %s\r\n"+
@@ -56,49 +112,39 @@ func SendEmail(subject string, receiver string, content string) error {
 	addr := fmt.Sprintf("%s:%d", SMTPServer, SMTPPort)
 	to := strings.Split(receiver, ";")
 	var err error
-	if SMTPPort == 465 || SMTPSSLEnabled {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         SMTPServer,
-		}
-		conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", SMTPServer, SMTPPort), tlsConfig)
-		if err != nil {
-			return err
-		}
-		client, err := smtp.NewClient(conn, SMTPServer)
-		if err != nil {
-			return err
-		}
-		defer client.Close()
+	client, err := newSMTPClient(addr)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	if shouldAuthenticateSMTP() {
 		if err = client.Auth(auth); err != nil {
 			return err
 		}
-		if err = client.Mail(SMTPFrom); err != nil {
-			return err
-		}
-		receiverEmails := strings.Split(receiver, ";")
-		for _, receiver := range receiverEmails {
-			if err = client.Rcpt(receiver); err != nil {
-				return err
-			}
-		}
-		w, err := client.Data()
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(mail)
-		if err != nil {
-			return err
-		}
-		err = w.Close()
-		if err != nil {
-			return err
-		}
-	} else {
-		err = smtp.SendMail(addr, auth, SMTPFrom, to, mail)
 	}
+	if err = client.Mail(SMTPFrom); err != nil {
+		return err
+	}
+	for _, receiver := range to {
+		if err = client.Rcpt(receiver); err != nil {
+			return err
+		}
+	}
+	w, err := client.Data()
 	if err != nil {
-		SysError(fmt.Sprintf("failed to send email to %s: %v", receiver, err))
+		return err
+	}
+	_, err = w.Write(mail)
+	if err != nil {
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		return err
+	}
+	err = client.Quit()
+	if err != nil {
+		SysError(LogText("failed to send email to %s: %v", receiver, err))
 	}
 	return err
 }

@@ -1,138 +1,136 @@
 package model
 
 import (
-	"strings"
+	"fmt"
+	"os"
 	"testing"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/glebarez/sqlite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 func TestNormalizeOwnerGroup(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{"", ""},
-		{"   ", ""},
-		{"vip", "vip"},
-		{" vip ", "vip"},
-		{"vip,svip", "vip,svip"},
-		{" vip , svip , ", "vip,svip"},
-		{"vip,vip,svip", "vip,svip"},
-		{",,vip,,svip,,", "vip,svip"},
-	}
-	for _, c := range cases {
-		got := NormalizeOwnerGroup(c.in)
-		if got != c.want {
-			t.Errorf("NormalizeOwnerGroup(%q) = %q, want %q", c.in, got, c.want)
-		}
-	}
+	assert.Equal(t, "vip,svip", NormalizeOwnerGroup(" vip,svip,vip, ,"))
+	assert.Empty(t, NormalizeOwnerGroup(" , , "))
+	assert.Equal(t, []string{"vip", "svip"}, OwnerGroupList(" vip, svip "))
 }
 
-func TestOwnerGroupList(t *testing.T) {
-	cases := []struct {
-		in   string
-		want []string
-	}{
-		{"", nil},
-		{"   ", nil},
-		{"vip", []string{"vip"}},
-		{"vip,svip", []string{"vip", "svip"}},
-		{" vip , svip ", []string{"vip", "svip"}},
-	}
-	for _, c := range cases {
-		got := OwnerGroupList(c.in)
-		if len(got) != len(c.want) {
-			t.Errorf("OwnerGroupList(%q) len = %d, want %d (got %v)", c.in, len(got), len(c.want), got)
-			continue
-		}
-		for i := range got {
-			if got[i] != c.want[i] {
-				t.Errorf("OwnerGroupList(%q)[%d] = %q, want %q", c.in, i, got[i], c.want[i])
+// Database matrix uses isolated tables, never deployment subscription tables.
+func TestOwnerGroupDatabaseMatrix(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "mysql", "postgres"} {
+		t.Run(dialect, func(t *testing.T) {
+			var driver gorm.Dialector
+			switch dialect {
+			case "sqlite":
+				driver = sqlite.Open(":memory:")
+			case "mysql":
+				dsn := os.Getenv("TEST_MYSQL_DSN")
+				if dsn == "" {
+					t.Skip("TEST_MYSQL_DSN is not configured")
+				}
+				driver = mysql.Open(dsn)
+			case "postgres":
+				dsn := os.Getenv("TEST_POSTGRES_DSN")
+				if dsn == "" {
+					t.Skip("TEST_POSTGRES_DSN is not configured")
+				}
+				driver = postgres.Open(dsn)
 			}
-		}
-	}
-}
-
-// likeMatch mimics SQL LIKE semantics for the trivial patterns we use:
-// %tok and tok% and %tok% — no escape support needed (groups disallow ',').
-func likeMatch(value, pattern string) bool {
-	leadingPct := strings.HasPrefix(pattern, "%")
-	trailingPct := strings.HasSuffix(pattern, "%")
-	core := strings.TrimSuffix(strings.TrimPrefix(pattern, "%"), "%")
-	if leadingPct && trailingPct {
-		return strings.Contains(value, core)
-	}
-	if leadingPct {
-		return strings.HasSuffix(value, core)
-	}
-	if trailingPct {
-		return strings.HasPrefix(value, core)
-	}
-	return value == pattern
-}
-
-// evalClause evaluates whether a row's owner_group satisfies the WHERE clause
-// produced by ownerGroupMatchClause for usingGroup. This validates that the
-// LIKE pattern boundaries do what we expect across DBs.
-func evalClause(rowOwnerGroup, usingGroup string) bool {
-	clause, args := ownerGroupMatchClause(usingGroup)
-	parts := strings.Split(clause, " OR ")
-	for i, p := range parts {
-		arg, _ := args[i].(string)
-		switch {
-		case strings.HasSuffix(p, "owner_group = ?"):
-			if rowOwnerGroup == arg {
-				return true
+			db, err := gorm.Open(driver, &gorm.Config{NamingStrategy: schema.NamingStrategy{TablePrefix: "owner_group_test_"}})
+			require.NoError(t, err)
+			sqlDB, err := db.DB()
+			require.NoError(t, err)
+			sqlDB.SetMaxOpenConns(1)
+			previousDB, previousType := DB, common.MainDatabaseType()
+			DB = db
+			common.SetMainDatabaseType(common.DatabaseType(dialect))
+			t.Cleanup(func() {
+				DB = previousDB
+				common.SetMainDatabaseType(previousType)
+				assert.NoError(t, db.Migrator().DropTable(&SubscriptionPreConsumeRecord{}, &UserSubscription{}, &SubscriptionPlan{}))
+				assert.NoError(t, sqlDB.Close())
+			})
+			versionSQL := "SELECT version()"
+			if dialect == "sqlite" {
+				versionSQL = "SELECT sqlite_version()"
 			}
-		case strings.HasSuffix(p, "owner_group LIKE ?"):
-			if likeMatch(rowOwnerGroup, arg) {
-				return true
+			var version string
+			require.NoError(t, db.Raw(versionSQL).Scan(&version).Error)
+			t.Logf("database version: %s", version)
+			require.NoError(t, db.AutoMigrate(&SubscriptionPlan{}, &UserSubscription{}, &SubscriptionPreConsumeRecord{}))
+			now := common.GetTimestamp()
+			plan := SubscriptionPlan{Id: 981001, Title: "Group plan", DurationUnit: "month", DurationValue: 1, OwnerGroup: "vip,svip", TotalAmount: 1000, QuotaResetPeriod: "never"}
+			require.NoError(t, db.Create(&plan).Error)
+			InvalidateSubscriptionPlanCache(plan.Id)
+			t.Cleanup(func() { InvalidateSubscriptionPlanCache(plan.Id) })
+			sub := UserSubscription{UserId: 981001, PlanId: plan.Id, Status: "active", EndTime: now + 3600, AmountTotal: 1000, AmountUsed: 70, OwnerGroup: "vip,svip", AllowWalletOverflow: true}
+			require.NoError(t, db.Create(&sub).Error)
+			cancelled := UserSubscription{UserId: sub.UserId, PlanId: plan.Id, Status: "cancelled", EndTime: now + 3600, OwnerGroup: "legacy"}
+			require.NoError(t, db.Create(&cancelled).Error)
+			// The latest upstream schema has no owner_group column.
+			require.NoError(t, db.Migrator().DropColumn(&UserSubscription{}, "OwnerGroup"))
+			for range 2 {
+				require.NoError(t, db.AutoMigrate(&SubscriptionPlan{}, &UserSubscription{}, &SubscriptionPreConsumeRecord{}))
+				require.NoError(t, backfillUserSubscriptionOwnerGroup())
 			}
-		}
-	}
-	return false
-}
-
-func TestOwnerGroupMatchClauseSemantics(t *testing.T) {
-	cases := []struct {
-		row, using string
-		want       bool
-	}{
-		// usingGroup empty: only empty owner_group matches
-		{"", "", true},
-		{"vip", "", false},
-		{"vip,svip", "", false},
-
-		// empty row owner_group is always open
-		{"", "vip", true},
-
-		// exact single match
-		{"vip", "vip", true},
-		{"vip", "svip", false},
-
-		// CSV with the group at head / middle / tail
-		{"vip,svip", "vip", true},
-		{"vip,svip", "svip", true},
-		{"a,vip,b", "vip", true},
-		{"a,vip", "vip", true},
-		{"vip,b", "vip", true},
-
-		// CSV without the group
-		{"foo,bar", "vip", false},
-
-		// Prefix-of-token must NOT match (boundary correctness)
-		{"vipplus", "vip", false},
-		{"vipplus,svip", "vip", true}, // matches via svip→vip? no — usingGroup is vip; svip≠vip, vipplus≠vip; should be false
-	}
-	for _, c := range cases {
-		got := evalClause(c.row, c.using)
-		// Special case re-evaluate the last item: ("vipplus,svip","vip") — must be false
-		// because neither entry equals "vip".
-		expected := c.want
-		if c.row == "vipplus,svip" && c.using == "vip" {
-			expected = false
-		}
-		if got != expected {
-			t.Errorf("evalClause(row=%q, using=%q) = %v, want %v", c.row, c.using, got, expected)
-		}
+			var restored, inactive UserSubscription
+			require.NoError(t, db.First(&restored, sub.Id).Error)
+			assert.Equal(t, "vip,svip", restored.OwnerGroup)
+			assert.EqualValues(t, 70, restored.AmountUsed)
+			assert.Equal(t, sub.EndTime, restored.EndTime)
+			require.NoError(t, db.First(&inactive, cancelled.Id).Error)
+			assert.Empty(t, inactive.OwnerGroup)
+			for i, tc := range []struct {
+				owner, group string
+				allowed      bool
+			}{
+				{"", "vip", true}, {"vip,svip", "vip", true}, {"vip,svip", "svip", true}, {"a,vip,b", "vip", true},
+				{"vipplus,svip", "vip", false}, {"vip,svip", "", false}, {"", "", true},
+				{"a,team_x", "team_x", true}, {"a,teamax", "team_x", false},
+				{"a,team%", "team%", true}, {"a,teamXYZ", "team%", false}, {"a,team!", "team!", true},
+				{"VIP,svip", "vip", false}, {"a,VIP,b", "vip", false},
+			} {
+				t.Run(fmt.Sprintf("matching_%d", i), func(t *testing.T) {
+					require.NoError(t, db.Model(&sub).Update("owner_group", tc.owner).Error)
+					allowed, err := HasActiveUserSubscription(sub.UserId, tc.group)
+					require.NoError(t, err)
+					assert.Equal(t, tc.allowed, allowed)
+					if !tc.allowed {
+						_, err = PreConsumeUserSubscription(fmt.Sprintf("denied-%d", i), sub.UserId, "model", 0, 1, tc.group)
+						require.Error(t, err)
+					}
+				})
+			}
+			require.NoError(t, db.Model(&sub).Update("owner_group", "vip,svip").Error)
+			strict := UserSubscription{UserId: sub.UserId, PlanId: plan.Id, Status: "active", EndTime: now + 3600, OwnerGroup: "other", AllowWalletOverflow: false}
+			require.NoError(t, db.Create(&strict).Error)
+			allowed, err := UserActiveSubscriptionsAllowWalletOverflow(sub.UserId, "vip")
+			require.NoError(t, err)
+			assert.True(t, allowed)
+			allowed, err = UserActiveSubscriptionsAllowWalletOverflow(sub.UserId, "other")
+			require.NoError(t, err)
+			assert.False(t, allowed)
+			allowed, err = UserActiveSubscriptionsAllowWalletOverflow(sub.UserId, "OTHER")
+			require.NoError(t, err)
+			assert.True(t, allowed)
+			_, err = PreConsumeUserSubscription("owner-denied", sub.UserId, "model", 0, 100, "absent")
+			require.Error(t, err)
+			result, err := PreConsumeUserSubscription("owner-allowed", sub.UserId, "model", 0, 100, "svip")
+			require.NoError(t, err)
+			assert.Equal(t, sub.Id, result.UserSubscriptionId)
+			assert.Equal(t, "vip,svip", result.OwnerGroup)
+			_, err = PreConsumeUserSubscription("owner-allowed", sub.UserId, "model", 0, 100, "absent")
+			require.Error(t, err)
+			require.NoError(t, RefundSubscriptionPreConsume("owner-allowed"))
+			require.NoError(t, RefundSubscriptionPreConsume("owner-allowed"))
+			require.NoError(t, db.First(&restored, sub.Id).Error)
+			assert.EqualValues(t, 70, restored.AmountUsed)
+		})
 	}
 }

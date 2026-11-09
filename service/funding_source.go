@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"github.com/QuantumNous/new-api/model"
@@ -26,6 +27,11 @@ type FundingSource interface {
 // WalletFunding — 钱包资金来源实现
 // ---------------------------------------------------------------------------
 
+// ErrInsufficientWalletQuota 钱包原子预扣失败（余额不足），未发生任何扣减。
+// BillingSession 据此映射为 ErrorCodeInsufficientUserQuota，
+// 使 wallet_first 等计费偏好可以回退到订阅。
+var ErrInsufficientWalletQuota = errors.New("wallet quota insufficient")
+
 type WalletFunding struct {
 	userId   int
 	consumed int // 实际预扣的用户额度
@@ -37,10 +43,15 @@ func (w *WalletFunding) PreConsume(amount int) error {
 	if amount <= 0 {
 		return nil
 	}
-	if err := model.DecreaseUserQuota(w.userId, amount, false); err != nil {
+	reserved, err := model.TryReserveUserQuota(w.userId, amount)
+	if err != nil {
 		return err
 	}
-	w.consumed = amount
+	if !reserved {
+		return ErrInsufficientWalletQuota
+	}
+	// 发送前补扣会再次预扣，累加后退款才能退回全部预扣。
+	w.consumed += amount
 	return nil
 }
 
@@ -71,6 +82,7 @@ type SubscriptionFunding struct {
 	requestId      string
 	userId         int
 	modelName      string
+	ownerGroup     string // allowed groups captured by the reservation
 	usingGroup     string // 本次请求使用的分组，用于匹配订阅归属分组
 	amount         int64  // 预扣的订阅额度（subConsume）
 	subscriptionId int
@@ -90,6 +102,7 @@ func (s *SubscriptionFunding) PreConsume(_ int) error {
 	if err != nil {
 		return err
 	}
+	s.ownerGroup = res.OwnerGroup
 	s.subscriptionId = res.UserSubscriptionId
 	s.preConsumed = res.PreConsumed
 	s.AmountTotal = res.AmountTotal
@@ -126,7 +139,7 @@ func refundWithRetry(fn func() error) error {
 	}
 	const maxAttempts = 3
 	var lastErr error
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		if err := fn(); err == nil {
 			return nil
 		} else {

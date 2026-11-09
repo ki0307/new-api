@@ -6,6 +6,7 @@ RUN apt-get update \
     && update-ca-certificates
 
 COPY new-api-linux-amd64 /new-api
+COPY LICENSE NOTICE THIRD-PARTY-LICENSES.md /licenses/
 RUN chmod +x /new-api
 
 EXPOSE 3000

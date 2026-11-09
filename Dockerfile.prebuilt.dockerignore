@@ -10,6 +10,8 @@ docs
 .gomodcache
 .agents
 /web/node_modules
-/web/default/node_modules
-/web/classic/node_modules
+/web/default
+/web/classic
 !THIRD-PARTY-LICENSES.md
+!relaykit/**/*.md
+!tokenkit/**/*.md
